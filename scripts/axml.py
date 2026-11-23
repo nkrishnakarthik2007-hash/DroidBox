@@ -37,6 +37,8 @@ def _u32(data: bytes, offset: int) -> int:
 
 
 def _read_length8(data: bytes, offset: int):
+    if offset < 0 or offset >= len(data):
+        raise AXMLDecodeError("String length offset is out of bounds")
     first = data[offset]
     if first & 0x80:
         if offset + 1 >= len(data):
@@ -63,6 +65,9 @@ def _decode_string_pool(chunk: bytes):
     header_size = _u16(chunk, 2)
     if header_size < 28 or strings_start > len(chunk):
         raise AXMLDecodeError("Invalid string pool header")
+    offset_table_end = header_size + (string_count + style_count) * 4
+    if strings_start < offset_table_end:
+        raise AXMLDecodeError("String data overlaps the string offset table")
     if string_count > 1_000_000 or style_count > 1_000_000:
         raise AXMLDecodeError("String pool count exceeds safety limit")
     if header_size + (string_count + style_count) * 4 > len(chunk):
@@ -72,7 +77,7 @@ def _decode_string_pool(chunk: bytes):
     for i in range(string_count):
         offset = _u32(chunk, header_size + i * 4)
         pos = strings_start + offset
-        if pos >= len(chunk):
+        if pos < strings_start or pos >= len(chunk):
             raise AXMLDecodeError("String pool string offset out of bounds")
         if utf8:
             _, pos = _read_length8(chunk, pos)  # UTF-16 length
@@ -145,16 +150,20 @@ def decode_axml(data: bytes) -> ET.Element:
         if chunk_type == RES_STRING_POOL_TYPE:
             strings = _decode_string_pool(chunk)
         elif chunk_type == RES_XML_START_NAMESPACE_TYPE:
+            if chunk_size < 24:
+                raise AXMLDecodeError("Malformed namespace chunk")
             if not strings:
                 raise AXMLDecodeError("Namespace chunk before string pool")
             prefix = _string(strings, _u32(chunk, 16))
             uri = _string(strings, _u32(chunk, 20))
             namespace_stack.append((prefix, uri))
         elif chunk_type == RES_XML_END_NAMESPACE_TYPE:
+            if chunk_size < 24:
+                raise AXMLDecodeError("Malformed end-namespace chunk")
             if namespace_stack:
                 namespace_stack.pop()
         elif chunk_type == RES_XML_START_ELEMENT_TYPE:
-            if not strings or chunk_size < 36:
+            if not strings or chunk_size < 36 or header_size < 16:
                 raise AXMLDecodeError("Malformed start-element chunk")
             ns_index = _u32(chunk, 16)
             name_index = _u32(chunk, 20)
