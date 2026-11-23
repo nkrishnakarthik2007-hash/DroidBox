@@ -91,12 +91,12 @@ public partial class MainWindow : Window
             try { if (activeProcess is { HasExited: false }) activeProcess.Kill(entireProcessTree: true); } catch { }
             InspectStatus.Text = "Inspection cancelled or timed out.";
         }
-        finally { activeProcess?.Dispose(); }
         catch (Exception ex)
         {
             InspectStatus.Text = "Inspector unavailable. Check Python installation.";
             MetadataText.Text = ex.Message.Length > 800 ? ex.Message[..800] : ex.Message;
         }
+        finally { activeProcess?.Dispose(); }
     }
     private static string? FindInspectorRoot()
     {
