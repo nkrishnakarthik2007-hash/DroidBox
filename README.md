@@ -2,13 +2,13 @@
 
 **Android apps on Windows — without a full Android desktop.**
 
-DroidBox is an NKK-led open-source research project exploring a lightweight Android application compatibility runtime for Windows. The goal: install an APK, click it in the DroidBox launcher, and—when supported—open it in a native-feeling Windows window.
+DroidBox is an NKK-led open-source research project exploring a lightweight Android application compatibility runtime for Windows. The goal: select an APK, get a fast metadata preview without a lengthy setup or extraction process, then click Run and—when supported—open it in a native-feeling Windows window. Inspection and launch are separate so selection stays fast and failures stay contained.
 
 > APKs require Android runtime/framework behavior. DroidBox will not make every APK work instantly. The first milestone is research, a measurable prototype, and reproducible test apps.
 
 **Made with love by N. Krishna Karthik ❤️**
 
-## Vision
+## Fast APK experience\n- APK selection immediately shows a preview; target is under 1 second for ordinary packages, measured on test hardware.\n- Selection does not extract the whole APK, install it, boot a VM, or execute app code.\n- Deeper analysis runs in the background and can be cancelled.\n- Unsupported packages receive a clear compatibility status; the launcher must not freeze or crash when a backend fails.\n- Fast preview is not a promise that an APK will launch.\n\n## Vision
 - Windows remains the host operating system.
 - The launcher is a native Windows application, not an Android home screen.
 - Apps open individually, not inside a visible Android desktop.
@@ -49,7 +49,7 @@ We will not commit to one backend until experiments and benchmarks are documente
 - [ ] Optional WSL/Waydroid feasibility experiment
 - [ ] Window integration and resource benchmarks
 
-See Research Matrix, Architecture and Roadmap in docs.
+See [Fast APK Flow](docs/FAST_APK_FLOW.md), [Security Model](docs/SECURITY_MODEL.md), Research Matrix, Architecture and Roadmap in docs.
 
 ## Status
 **Stage 0 — research and feasibility.** No Android runtime is implemented yet. This repository is the source of truth for research, decisions, experiments and future code.
