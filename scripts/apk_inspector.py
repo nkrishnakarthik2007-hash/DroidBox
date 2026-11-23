@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safe, non-executing APK inventory prototype for DroidBox."""
+"""Fast, non-executing APK metadata inspector. Never extracts or executes APK code."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +9,7 @@ import os
 import sys
 import zipfile
 from pathlib import PurePosixPath
+from xml.etree import ElementTree
 
 from scripts.axml import AXMLDecodeError, decode_axml
 
@@ -16,11 +17,12 @@ MAX_ENTRIES = 100_000
 MAX_TOTAL_UNCOMPRESSED = 2 * 1024 * 1024 * 1024
 MAX_MANIFEST_SIZE = 8 * 1024 * 1024
 ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
+MAX_DEX_COUNT = 128
 
 
 def safe_entry_name(name: str) -> bool:
     path = PurePosixPath(name)
-    return not path.is_absolute() and ".." not in path.parts and "\\x00" not in name
+    return not path.is_absolute() and ".." not in path.parts and "\\x00" not in name and not name.startswith("\\\\")
 
 
 def _manifest_info(root):
@@ -38,7 +40,7 @@ def _manifest_info(root):
         if tag == "uses-sdk":
             result["min_sdk"] = child.attrib.get(ANDROID_NS + "minSdkVersion")
             result["target_sdk"] = child.attrib.get(ANDROID_NS + "targetSdkVersion")
-        elif tag in ("uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-28"):
+        elif tag.startswith("uses-permission"):
             permission = child.attrib.get(ANDROID_NS + "name")
             if permission:
                 result["permissions"].append(permission)
@@ -51,7 +53,18 @@ def _manifest_info(root):
     return result
 
 
-def inspect_apk(path: str) -> dict:
+def _parse_manifest(raw: bytes):
+    # Plain XML is useful for fixtures and unusual packages; real APKs normally use AXML.
+    try:
+        return ElementTree.fromstring(raw), "parsed_xml"
+    except ElementTree.ParseError:
+        try:
+            return decode_axml(raw), "decoded_binary_xml"
+        except (AXMLDecodeError, ValueError, IndexError, OverflowError) as exc:
+            raise ValueError(f"manifest is binary or unreadable: {exc}") from exc
+
+
+def inspect_apk(path: str, *, calculate_hash: bool = True) -> dict:
     result = {
         "file": os.path.basename(path),
         "sha256": None,
@@ -71,11 +84,12 @@ def inspect_apk(path: str) -> dict:
         "warnings": [],
     }
 
-    digest = hashlib.sha256()
-    with open(path, "rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    result["sha256"] = digest.hexdigest()
+    if calculate_hash:
+        digest = hashlib.sha256()
+        with open(path, "rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        result["sha256"] = digest.hexdigest()
 
     with zipfile.ZipFile(path, "r") as apk:
         infos = apk.infolist()
@@ -88,36 +102,42 @@ def inspect_apk(path: str) -> dict:
         result["entry_count"] = len(infos)
         result["uncompressed_bytes"] = total_size
 
-        manifest_info = None
+        manifests = []
         for info in infos:
             if not safe_entry_name(info.filename):
-                result["warnings"].append(f"Unsafe archive entry name: {info.filename!r}")
+                result["warnings"].append("Archive contains unsafe path entries.")
                 continue
             if info.filename == "AndroidManifest.xml":
-                manifest_info = info
-            if info.filename.endswith(".dex") and (info.filename == "classes.dex" or info.filename.startswith("classes")):
+                manifests.append(info)
+            if info.filename.endswith(".dex") and (info.filename == "classes.dex" or (info.filename.startswith("classes") and info.filename.endswith(".dex"))):
                 result["dex_files"].append({"name": info.filename, "size_bytes": info.file_size})
             if info.filename.startswith("lib/") and info.filename.endswith(".so"):
                 parts = info.filename.split("/")
-                if len(parts) >= 3:
-                    result["native_libraries"].append({"abi": parts[1], "name": parts[-1], "size_bytes": info.file_size})
+                if len(parts) == 3:
+                    result["native_libraries"].append({"abi": parts[1], "name": parts[2], "size_bytes": info.file_size})
 
-        if manifest_info:
-            if manifest_info.file_size > MAX_MANIFEST_SIZE:
+        if len(manifests) > 1:
+            result["manifest_status"] = "duplicate_manifest"
+            result["warnings"].append("APK contains multiple AndroidManifest.xml entries.")
+        elif manifests:
+            info = manifests[0]
+            if info.file_size > MAX_MANIFEST_SIZE:
                 result["manifest_status"] = "too_large"
                 result["warnings"].append("Manifest exceeds inspection size limit.")
             else:
                 try:
-                    root = decode_axml(apk.read(manifest_info))
-                except (AXMLDecodeError, ValueError, IndexError) as exc:
+                    root, status = _parse_manifest(apk.read(info))
+                except (ValueError, zipfile.BadZipFile, RuntimeError) as exc:
                     result["manifest_status"] = "binary_or_unreadable_xml"
-                    result["warnings"].append(f"Manifest could not be decoded: {exc}")
+                    result["warnings"].append(str(exc))
                 else:
-                    result["manifest_status"] = "decoded_binary_xml"
+                    result["manifest_status"] = status
                     result.update(_manifest_info(root))
         else:
             result["warnings"].append("AndroidManifest.xml not found.")
 
+    if len(result["dex_files"]) > MAX_DEX_COUNT:
+        result["warnings"].append("APK has unusually many DEX files.")
     result["dex_files"].sort(key=lambda x: x["name"])
     result["native_libraries"].sort(key=lambda x: (x["abi"], x["name"]))
     result["permissions"] = sorted(set(result["permissions"]))
@@ -129,10 +149,10 @@ def inspect_apk(path: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Inspect an APK safely without executing it.")
     parser.add_argument("apk", help="Path to APK file")
-    parser.add_argument("--json", action="store_true", help="Output JSON (default)")
+    parser.add_argument("--skip-hash", action="store_true", help="Skip SHA-256 for faster metadata preview")
     args = parser.parse_args()
     try:
-        report = inspect_apk(args.apk)
+        report = inspect_apk(args.apk, calculate_hash=not args.skip_hash)
     except (OSError, zipfile.BadZipFile, ValueError) as exc:
         print(json.dumps({"error": str(exc)}, indent=2), file=sys.stderr)
         return 2
