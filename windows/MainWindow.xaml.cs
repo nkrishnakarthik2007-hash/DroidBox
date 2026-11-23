@@ -9,7 +9,10 @@ namespace DroidBox.Windows;
 public partial class MainWindow : Window
 {
     private CancellationTokenSource? _inspection;
-    public MainWindow() { InitializeComponent(); }
+    private string? _selectedApkPath;
+    private string? _runtimePath;
+    private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "settings.json");
+    public MainWindow() { InitializeComponent(); LoadRuntimeSettings(); }
     private void SelectButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Title = "Select Android APK", Filter = "Android packages (*.apk)|*.apk", CheckFileExists = true };
@@ -31,6 +34,8 @@ public partial class MainWindow : Window
         _inspection?.Cancel();
         _inspection?.Dispose();
         _inspection = new CancellationTokenSource();
+        _selectedApkPath = info.FullName;
+        RunAppButton.IsEnabled = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath);
         FileNameText.Text = info.Name;
         FileInfoText.Text = $"{FormatSize(info.Length)} • Selected locally";
         InspectStatus.Text = "Inspecting package metadata (no APK code is executed)…";
@@ -102,6 +107,76 @@ public partial class MainWindow : Window
         }
         finally { activeProcess?.Dispose(); }
     }
+    private void SelectRuntimeButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Title = "Select Stubuika or Lunaria runtime", Filter = "Runtime executable (*.exe)|*.exe", CheckFileExists = true };
+        if (dialog.ShowDialog() != true) return;
+        var name = Path.GetFileName(dialog.FileName);
+        if (!name.Equals("stubuika.exe", StringComparison.OrdinalIgnoreCase) && !name.Equals("lunaria.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show("For this experimental bridge, choose stubuika.exe or lunaria.exe.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        _runtimePath = dialog.FileName;
+        RuntimePathText.Text = _runtimePath;
+        RunAppButton.IsEnabled = !string.IsNullOrWhiteSpace(_selectedApkPath);
+        SaveRuntimeSettings();
+    }
+    private void RunAppButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_selectedApkPath) || !File.Exists(_selectedApkPath))
+        {
+            MessageBox.Show("Select an APK first.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_runtimePath) || !File.Exists(_runtimePath))
+        {
+            MessageBox.Show("Select the Stubuika or Lunaria runtime executable first.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var warning = "Experimental runtime launch. DroidBox does not sandbox this APK yet. The app may access files, network, and other resources available to your Windows account. Only run APKs you trust. Continue?";
+        if (MessageBox.Show(warning, "Security warning", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try
+        {
+            var psi = new ProcessStartInfo(_runtimePath)
+            {
+                WorkingDirectory = Path.GetDirectoryName(_runtimePath) ?? AppContext.BaseDirectory,
+                UseShellExecute = false
+            };
+            psi.ArgumentList.Add(_selectedApkPath);
+            Process.Start(psi);
+            InspectStatus.Text = "Runtime process launched. App compatibility is not guaranteed.";
+        }
+        catch (Exception ex)
+        {
+            InspectStatus.Text = "Runtime launch failed.";
+            MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    private void LoadRuntimeSettings()
+    {
+        try
+        {
+            if (!File.Exists(SettingsPath)) { RuntimePathText.Text = "No runtime selected"; return; }
+            var settings = JsonSerializer.Deserialize<RuntimeSettings>(File.ReadAllText(SettingsPath));
+            _runtimePath = settings?.RuntimePath;
+            RuntimePathText.Text = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath) ? _runtimePath : "Runtime not found — select it again";
+        }
+        catch { RuntimePathText.Text = "Runtime settings unavailable"; }
+    }
+    private void SaveRuntimeSettings()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new RuntimeSettings { RuntimePath = _runtimePath }));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Runtime selected, but settings could not be saved: " + ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+    private sealed class RuntimeSettings { public string? RuntimePath { get; set; } }
     // Drain process pipes to avoid deadlocks, but retain only a small bounded amount of text.
     private static async Task<(string text, bool truncated)> ReadBoundedAsync(StreamReader reader, int maxChars, CancellationToken token)
     {
