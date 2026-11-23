@@ -92,7 +92,7 @@ public partial class MainWindow : Window
             var activities = data.TryGetProperty("activities", out var a) && a.ValueKind == JsonValueKind.Array ? a.GetArrayLength() : 0;
             var dex = data.TryGetProperty("dex_files", out var d) && d.ValueKind == JsonValueKind.Array ? d.GetArrayLength() : 0;
             var libs = data.TryGetProperty("native_libraries", out var l) && l.ValueKind == JsonValueKind.Array ? l.GetArrayLength() : 0;
-            InspectStatus.Text = "Metadata inspection completed. Runtime is not connected.";
+            InspectStatus.Text = "Metadata inspection completed. Select a runtime to test actual execution.";
             MetadataText.Text = $"Package: {package}\nVersion: {version}\nSDK: min {minSdk} / target {targetSdk}\nPermissions: {permissions} • Activities: {activities}\nDEX files: {dex} • Native libraries: {libs}";
         }
         catch (OperationCanceledException)
