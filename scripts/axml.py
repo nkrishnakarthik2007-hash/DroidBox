@@ -189,8 +189,15 @@ def decode_axml(data: bytes) -> ET.Element:
                 root = node
             element_stack.append(node)
         elif chunk_type == RES_XML_END_ELEMENT_TYPE:
-            if not element_stack:
-                raise AXMLDecodeError("Unexpected end-element chunk")
+            if not element_stack or chunk_size < 24:
+                raise AXMLDecodeError("Unexpected or malformed end-element chunk")
+            ns_index = _u32(chunk, 16)
+            name_index = _u32(chunk, 20)
+            name = _string(strings, name_index)
+            ns_uri = _string(strings, ns_index)
+            closing_tag = f"{{{ns_uri}}}{name}" if ns_uri else name
+            if element_stack[-1].tag != closing_tag:
+                raise AXMLDecodeError("Mismatched XML closing element")
             element_stack.pop()
         elif chunk_type == RES_XML_CDATA_TYPE:
             if element_stack and chunk_size >= 28:
