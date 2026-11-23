@@ -2,7 +2,9 @@ import os
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 
+import scripts.apk_inspector as inspector_module
 from scripts.apk_inspector import inspect_apk, safe_entry_name
 from scripts.axml import AXMLDecodeError, decode_axml
 
@@ -108,6 +110,33 @@ class InspectorTests(unittest.TestCase):
         try:
             report = inspect_apk(path)
             self.assertEqual(report["manifest_status"], "not_found")
+        finally:
+            os.unlink(path)
+
+    def test_entry_count_limit_is_enforced(self):
+        path = self.create_apk({"one.txt": b"1", "two.txt": b"2"})
+        try:
+            with patch.object(inspector_module, "MAX_ENTRIES", 1):
+                with self.assertRaisesRegex(ValueError, "too many entries"):
+                    inspect_apk(path, calculate_hash=False)
+        finally:
+            os.unlink(path)
+
+    def test_declared_uncompressed_size_limit_is_enforced(self):
+        path = self.create_apk({"one.txt": b"12345", "two.txt": b"67890"})
+        try:
+            with patch.object(inspector_module, "MAX_TOTAL_UNCOMPRESSED", 8):
+                with self.assertRaisesRegex(ValueError, "Uncompressed archive exceeds"):
+                    inspect_apk(path, calculate_hash=False)
+        finally:
+            os.unlink(path)
+
+    def test_unsafe_path_is_warned_and_not_processed(self):
+        path = self.create_apk({"../AndroidManifest.xml": MANIFEST, "classes.dex": b"dex"})
+        try:
+            report = inspect_apk(path, calculate_hash=False)
+            self.assertIsNone(report["package"])
+            self.assertIn("Archive contains unsafe path entries.", report["warnings"])
         finally:
             os.unlink(path)
 
