@@ -58,8 +58,19 @@ We will not commit to one backend until experiments and benchmarks are documente
 
 See [Fast APK Flow](docs/FAST_APK_FLOW.md), [Security Model](docs/SECURITY_MODEL.md), Research Matrix, Architecture and Roadmap in docs.
 
+## Windows shell prototype
+
+A first WPF shell is now in `windows/`. It supports APK selection and drag/drop and shows file metadata (name/size). This is a UI scaffold only: APK inspection is not connected yet, and Android execution is not available. Build it on Windows with the .NET 8 SDK:
+
+```powershell
+cd windows
+dotnet run
+```
+
+A Windows CI workflow builds this shell on GitHub Actions.
+
 ## Status
-**Stage 0 — research and feasibility.** No Android runtime is implemented yet. This repository is the source of truth for research, decisions, experiments and future code.
+**Stage 0 — research and feasibility, with an early Windows shell scaffold.** No Android runtime is implemented yet. This repository is the source of truth for research, decisions, experiments and future code.
 
 ## Contributing
 See CONTRIBUTING.md. Please open an issue before large architectural changes.
