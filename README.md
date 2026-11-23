@@ -60,7 +60,7 @@ See [Fast APK Flow](docs/FAST_APK_FLOW.md), [Security Model](docs/SECURITY_MODEL
 
 ## Windows shell prototype
 
-A first WPF shell is now in `windows/`. It supports APK selection and drag/drop and shows file metadata (name/size). This is a UI scaffold only: APK inspection is not connected yet, and Android execution is not available. Build it on Windows with the .NET 8 SDK:
+A first WPF shell is now in `windows/`. It supports APK selection and drag/drop, and is being connected to the safe Python inspector for package metadata. Android execution is not available. Build it on Windows with the .NET 8 SDK:
 
 ```powershell
 cd windows
