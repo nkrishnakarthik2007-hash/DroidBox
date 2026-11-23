@@ -3,7 +3,7 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <Grid>
       <StackPanel><TextBlock Text="DroidBox" FontSize="28" FontWeight="Bold"/><TextBlock Text="Android apps. Windows freedom." Foreground="#A4A4B3" Margin="0,3,0,0"/></StackPanel>
-      <Border HorizontalAlignment="Right" Background="#252530" CornerRadius="16" Padding="12,7"><TextBlock Text="PREVIEW BUILD  •  RUNTIME NOT CONNECTED" FontSize="11" Foreground="#B9ACFF" FontWeight="SemiBold"/></Border>
+      <Border HorizontalAlignment="Right" Background="#252530" CornerRadius="16" Padding="12,7"><TextBlock Text="PREVIEW BUILD  •  EXPERIMENTAL RUNTIME BRIDGE" FontSize="11" Foreground="#B9ACFF" FontWeight="SemiBold"/></Border>
     </Grid>
     <Grid Grid.Row="1" Margin="0,28,0,20">
       <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
@@ -23,14 +23,15 @@
       </Border>
       <Border Grid.Column="2" Background="#1C1C24" CornerRadius="22" Padding="22">
         <StackPanel>
-          <TextBlock Text="Compatibility" FontSize="18" FontWeight="Bold"/>
-          <Border Background="#30294C" CornerRadius="10" Padding="12" Margin="0,14,0,0"><TextBlock Text="Inspection only" Foreground="#B9ACFF" FontWeight="SemiBold"/></Border>
-          <TextBlock Text="APK metadata inspection is connected. Android execution is not yet available." Foreground="#A4A4B3" TextWrapping="Wrap" Margin="0,12,0,0"/>
+          <TextBlock Text="Runtime" FontSize="18" FontWeight="Bold"/>
+          <TextBlock Text="Experimental external engine" Foreground="#A4A4B3" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          <Button Content="Select Stubuika / Lunaria" Click="SelectRuntimeButton_Click" Margin="0,14,0,0"/>
+          <TextBlock x:Name="RuntimePathText" Text="No runtime selected" Foreground="#777783" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          <Button x:Name="RunAppButton" Content="Run selected APK" Click="RunAppButton_Click" IsEnabled="False" Margin="0,20,0,0" Background="#37343F"/>
+          <TextBlock Text="Launches APK in the external runtime. DroidBox does not yet isolate APK code from your Windows account." Foreground="#D0A6A6" TextWrapping="Wrap" FontSize="11" Margin="0,10,0,0"/>
           <Separator Margin="0,20,0,16" Background="#383844"/>
-          <TextBlock Text="WHAT WILL BE CHECKED" FontSize="11" Foreground="#777783" FontWeight="Bold"/>
-          <TextBlock Text="• Package &amp; version&#10;• Android SDK requirements&#10;• Requested permissions&#10;• DEX files &amp; native ABIs" Foreground="#D3D3DD" Margin="0,12,0,0" LineHeight="24"/>
-          <Button Content="Run app" IsEnabled="False" Margin="0,24,0,0" Background="#37343F"/>
-          <TextBlock Text="Runtime engine not connected" FontSize="11" Foreground="#777783" Margin="0,8,0,0" TextAlignment="Center"/>
+          <TextBlock Text="INSPECTION" FontSize="11" Foreground="#777783" FontWeight="Bold"/>
+          <TextBlock Text="Package &amp; version • SDK requirements • permissions • DEX and native ABI inventory" Foreground="#D3D3DD" Margin="0,12,0,0" TextWrapping="Wrap" LineHeight="22"/>
         </StackPanel>
       </Border>
     </Grid>
