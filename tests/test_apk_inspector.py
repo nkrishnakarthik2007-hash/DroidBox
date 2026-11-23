@@ -78,6 +78,19 @@ class InspectorTests(unittest.TestCase):
         with self.assertRaises(AXMLDecodeError):
             decode_axml(b"\\x03\\x00\\x08\\x00\\x08\\x00\\x00\\x00")
 
+    def test_duplicate_manifest_is_reported(self):
+        temp = tempfile.NamedTemporaryFile(delete=False, suffix=".apk")
+        temp.close()
+        try:
+            with zipfile.ZipFile(temp.name, "w") as archive:
+                archive.writestr("AndroidManifest.xml", MANIFEST)
+                archive.writestr("AndroidManifest.xml", MANIFEST)
+            report = inspect_apk(temp.name, calculate_hash=False)
+            self.assertEqual(report["manifest_status"], "duplicate_manifest")
+            self.assertIsNone(report["package"])
+        finally:
+            os.unlink(temp.name)
+
     def test_missing_manifest(self):
         path = self.create_apk({"classes.dex": b"dex"})
         try:
