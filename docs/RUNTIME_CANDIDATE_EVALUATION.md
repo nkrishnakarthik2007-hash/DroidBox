@@ -1,6 +1,6 @@
 # Runtime Candidate Evaluation — Lunaria / Stubuika
 
-**Status:** research only. No runtime has been integrated into DroidBox.
+**Status:** runtime bridge experiment underway. The Windows shell now has an external-runtime launch path; native Windows display/audio behavior remains unverified.
 
 ## Current evidence checked
 - Lunaria: https://github.com/yui0/lunaria
@@ -42,5 +42,21 @@ Test a clean Windows 11 environment and record:
 - Installer size and dependency packaging.
 - License obligations and update/maintenance risk.
 
+## Fast-track decision (prototype only)
+For the 3–4 week prototype target, building a DEX interpreter/framework from scratch is no longer the primary path. Use Stubuika/Lunaria as an **external experimental runtime** for the first real APK execution attempt. This is not a final product-runtime selection.
+
+Reasons:
+- Windows x86-64 release packages are published.
+- The runtime accepts APKs from the command line.
+- The runtime avoids booting a complete Android system image.
+- We can test actual APK execution before investing in a custom runtime.
+
+Critical unknown:
+- Native Windows display/audio have not been independently verified on our target Windows laptop. Launching an executable does not prove that an APK renders or behaves correctly.
+
+Prototype security boundary:
+- The external runtime currently runs as the Windows user. DroidBox does **not** sandbox APK code. The launch UI warns users and requires confirmation.
+- Do not run APKs from unknown sources during this phase.
+
 ## Decision
-Do not select this runtime based on README claims or screenshots. Run a reproducible test suite and compare it with other options. Integration remains blocked until security and license gates are satisfied.
+Use the prebuilt Windows runtime for rapid feasibility testing, then evaluate compatibility and license obligations before bundling or redistribution. Do not claim app compatibility from inspection or runtime launch alone.
