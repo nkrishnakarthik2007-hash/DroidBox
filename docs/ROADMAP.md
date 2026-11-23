@@ -5,19 +5,19 @@
 - [x] Initial project research matrix
 - [x] Architecture proposal and ADR
 - [x] Fast APK intake and security requirements documented
-- [ ] Validate research references and licenses
-- [ ] Define supported test APK selection criteria
+- [ ] Validate research references and licenses\n- [x] Compatibility Lab test rules and record template
+- [x] Define supported test APK selection criteria (`docs/COMPATIBILITY_LAB.md`)
 
 ## Stage 1 — APK Inspector and fast intake
 - [x] Non-executing APK inventory prototype
 - [x] Basic binary AXML decoder prototype (needs validation against real APK fixtures)
 - [x] Fast-selection requirement: no full extraction, VM boot or app execution
 - [x] Security requirements documented
-- [ ] Test plain XML and binary AXML with fixtures
+- [x] Test plain XML and binary AXML with fixtures
 - [x] Duplicate ZIP entry tests (basic coverage; more malformed archive tests pending)
-- [ ] Validate limits against hostile/corrupt packages
+- [ ] Validate limits against hostile/corrupt packages (archive limit tests added; CI pending)
 - [x] Verify inspector behavior and run CI (GitHub Actions; further fixture coverage pending)
-- [x] Windows shell scaffold: file select/drop and selected-file preview (APK inspection integration pending)
+- [x] Windows shell scaffold: file select/drop and selected-file preview\n- [x] Windows shell metadata-inspector integration (source-checkout only; runtime packaging pending)\n- [x] Bounded inspector stdout/stderr capture in Windows shell (CI pending)
 - [ ] Background hash/signature/deeper inspection with cancel
 - [ ] Compatibility statuses and exportable diagnostics
 
