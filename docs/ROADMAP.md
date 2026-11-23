@@ -14,10 +14,10 @@
 - [x] Fast-selection requirement: no full extraction, VM boot or app execution
 - [x] Security requirements documented
 - [ ] Test plain XML and binary AXML with fixtures
-- [ ] Duplicate ZIP entry and malformed archive tests
+- [x] Duplicate ZIP entry tests (basic coverage; more malformed archive tests pending)
 - [ ] Validate limits against hostile/corrupt packages
-- [ ] Verify inspector behavior and run CI
-- [ ] Windows shell: file select/drop and instant package preview
+- [x] Verify inspector behavior and run CI (GitHub Actions; further fixture coverage pending)
+- [x] Windows shell scaffold: file select/drop and selected-file preview (APK inspection integration pending)
 - [ ] Background hash/signature/deeper inspection with cancel
 - [ ] Compatibility statuses and exportable diagnostics
 
