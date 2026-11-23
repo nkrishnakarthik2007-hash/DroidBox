@@ -72,7 +72,7 @@ class InspectorTests(unittest.TestCase):
 
     def test_axml_decoder_rejects_truncated_and_non_axml(self):
         with self.assertRaises(AXMLDecodeError):
-            decode_axml(b"")
+            decode_axml(b"\x03\x00\x08\x00\x08\x00\x00\x00")
         with self.assertRaises(AXMLDecodeError):
             decode_axml(b"not xml")
         with self.assertRaises(AXMLDecodeError):
