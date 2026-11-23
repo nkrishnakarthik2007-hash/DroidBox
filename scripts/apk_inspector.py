@@ -22,7 +22,7 @@ MAX_DEX_COUNT = 128
 
 def safe_entry_name(name: str) -> bool:
     path = PurePosixPath(name)
-    return not path.is_absolute() and ".." not in path.parts and "\\x00" not in name and "\\\\" not in name
+    return not path.is_absolute() and ".." not in path.parts and chr(0) not in name and chr(92) not in name
 
 
 def _manifest_info(root):
@@ -126,13 +126,20 @@ def inspect_apk(path: str, *, calculate_hash: bool = True) -> dict:
                 result["warnings"].append("Manifest exceeds inspection size limit.")
             else:
                 try:
-                    raw_manifest = apk.open(info).read(MAX_MANIFEST_SIZE + 1)\n                    if len(raw_manifest) > MAX_MANIFEST_SIZE:\n                        result["manifest_status"] = "too_large"\n                        result["warnings"].append("Manifest exceeds inspection size limit (actual bytes).")\n                        root = None\n                        status = None\n                    else:\n                        root, status = _parse_manifest(raw_manifest)
-                except (ValueError, zipfile.BadZipFile, RuntimeError) as exc:
+                    with apk.open(info) as manifest_stream:
+                        raw_manifest = manifest_stream.read(MAX_MANIFEST_SIZE + 1)
+                    if len(raw_manifest) > MAX_MANIFEST_SIZE:
+                        result["manifest_status"] = "too_large"
+                        result["warnings"].append("Manifest exceeds inspection size limit (actual bytes).")
+                    else:
+                        root, status = _parse_manifest(raw_manifest)
+                except (ValueError, zipfile.BadZipFile, RuntimeError, EOFError) as exc:
                     result["manifest_status"] = "binary_or_unreadable_xml"
                     result["warnings"].append(str(exc))
                 else:
-                    result["manifest_status"] = status
-                    result.update(_manifest_info(root))
+                    if len(raw_manifest) <= MAX_MANIFEST_SIZE:
+                        result["manifest_status"] = status
+                        result.update(_manifest_info(root))
         else:
             result["warnings"].append("AndroidManifest.xml not found.")
 
