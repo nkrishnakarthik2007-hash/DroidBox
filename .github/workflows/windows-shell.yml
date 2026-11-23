@@ -1,0 +1,21 @@
+name: Windows shell build
+on:
+  push:
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-shell.yml"
+  pull_request:
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-shell.yml"
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build WPF shell
+        run: dotnet build windows/DroidBox.Windows.csproj --configuration Release
