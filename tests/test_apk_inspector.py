@@ -4,6 +4,7 @@ import unittest
 import zipfile
 
 from scripts.apk_inspector import inspect_apk, safe_entry_name
+from scripts.axml import AXMLDecodeError, decode_axml
 
 
 MANIFEST = b'''<?xml version="1.0" encoding="utf-8"?>
@@ -68,6 +69,14 @@ class InspectorTests(unittest.TestCase):
             self.assertEqual(report["package"], "org.example.sample")
         finally:
             os.unlink(path)
+
+    def test_axml_decoder_rejects_truncated_and_non_axml(self):
+        with self.assertRaises(AXMLDecodeError):
+            decode_axml(b"")
+        with self.assertRaises(AXMLDecodeError):
+            decode_axml(b"not xml")
+        with self.assertRaises(AXMLDecodeError):
+            decode_axml(b"\\x03\\x00\\x08\\x00\\x08\\x00\\x00\\x00")
 
     def test_missing_manifest(self):
         path = self.create_apk({"classes.dex": b"dex"})
