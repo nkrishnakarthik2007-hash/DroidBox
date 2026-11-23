@@ -2,7 +2,7 @@
 
 ## APK Inspector prototype
 
-The first utility inventories APK files without executing them or extracting their contents.
+The inspector inventories APK files without executing them or extracting their contents. It can parse plain XML manifests and attempts binary AXML decoding.
 
 ### Requirements
 - Python 3.10 or newer
@@ -10,15 +10,28 @@ The first utility inventories APK files without executing them or extracting the
 
 ### Run
 
+Fast metadata preview without SHA-256:
+
+```powershell
+python scripts/apk_inspector.py path\to\app.apk --skip-hash
+```
+
+Full report with SHA-256:
+
 ```powershell
 python scripts/apk_inspector.py path\to\app.apk
 ```
 
-Output is JSON, including SHA-256, archive entry inventory, DEX files, native-library ABIs, and manifest information when the manifest is plain XML.
+### Fast-intake design
+- Selecting an APK must not extract the entire package, boot a VM, install an app, or execute APK code.
+- Metadata is bounded by ZIP entry count, declared expanded size, and manifest size.
+- Hashing is optional for the fast preview and should be asynchronous in the eventual GUI.
+- The inspector is only an inventory. It does not guarantee compatibility or launch success.
 
 ### Current limitations
-- Android binary XML (AXML) is not decoded yet, so most real APK manifests will be reported as binary/unreadable XML.
-- This is an inventory prototype, not a runtime and not a security scanner.
+- Binary AXML decoder is experimental and needs tests against real APK manifests.
+- Resources table, icon extraction, signature verification, split APK selection and full compatibility analysis are not implemented.
+- This is not a security scanner or runtime.
 - It does not execute APK code or extract files.
 
 ### Tests
@@ -26,3 +39,5 @@ Output is JSON, including SHA-256, archive entry inventory, DEX files, native-li
 ```powershell
 python -m unittest discover -s tests -v
 ```
+
+Windows CI is configured to run these tests on pushes and pull requests affecting the inspector.
