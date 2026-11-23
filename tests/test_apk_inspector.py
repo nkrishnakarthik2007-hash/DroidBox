@@ -3,7 +3,7 @@ import tempfile
 import unittest
 import zipfile
 
-from scripts.apk_inspector import inspect_apk
+from scripts.apk_inspector import inspect_apk, safe_entry_name
 
 
 MANIFEST = b'''<?xml version="1.0" encoding="utf-8"?>
@@ -50,6 +50,22 @@ class InspectorTests(unittest.TestCase):
             report = inspect_apk(path)
             self.assertEqual(report["manifest_status"], "binary_or_unreadable_xml")
             self.assertIsNone(report["package"])
+        finally:
+            os.unlink(path)
+
+    def test_safe_entry_name_rejects_traversal_and_windows_paths(self):
+        self.assertTrue(safe_entry_name("res/drawable/icon.png"))
+        self.assertFalse(safe_entry_name("../escape"))
+        self.assertFalse(safe_entry_name("folder/../escape"))
+        self.assertFalse(safe_entry_name(r"C:\\temp\\escape"))
+        self.assertFalse(safe_entry_name(r"\\server\\share\\file"))
+
+    def test_skip_hash_fast_preview(self):
+        path = self.create_apk({"AndroidManifest.xml": MANIFEST, "classes.dex": b"dex"})
+        try:
+            report = inspect_apk(path, calculate_hash=False)
+            self.assertIsNone(report["sha256"])
+            self.assertEqual(report["package"], "org.example.sample")
         finally:
             os.unlink(path)
 
