@@ -31,7 +31,7 @@
 - [ ] Performance benchmarks for APK intake
 
 ## Stage 3 — Runtime proof-of-concept
-- [ ] Decide runtime language/engine based on evidence
+- [x] Evaluate initial runtime candidates and licensing evidence (`docs/RUNTIME_CANDIDATE_EVALUATION.md`)\n- [ ] Decide runtime language/engine based on hands-on test evidence
 - [ ] Execute tiny DEX test program
 - [ ] Basic classes, object model, arrays and exceptions
 - [ ] Opcode tests for each implemented opcode
