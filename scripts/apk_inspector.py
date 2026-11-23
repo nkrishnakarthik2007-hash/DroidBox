@@ -103,7 +103,12 @@ def inspect_apk(path: str, *, calculate_hash: bool = True) -> dict:
         result["uncompressed_bytes"] = total_size
 
         manifests = []
+        seen_names = set()
+        duplicate_names = set()
         for info in infos:
+            if info.filename in seen_names:
+                duplicate_names.add(info.filename)
+            seen_names.add(info.filename)
             if not safe_entry_name(info.filename):
                 result["warnings"].append("Archive contains unsafe path entries.")
                 continue
@@ -116,7 +121,12 @@ def inspect_apk(path: str, *, calculate_hash: bool = True) -> dict:
                 if len(parts) == 3:
                     result["native_libraries"].append({"abi": parts[1], "name": parts[2], "size_bytes": info.file_size})
 
-        if len(manifests) > 1:
+        if duplicate_names:
+            result["warnings"].append("APK contains duplicate archive entries.")
+        if any(name == "AndroidManifest.xml" for name in duplicate_names):
+            result["manifest_status"] = "duplicate_manifest"
+            result["warnings"].append("APK contains duplicate AndroidManifest.xml entries.")
+        elif len(manifests) > 1:
             result["manifest_status"] = "duplicate_manifest"
             result["warnings"].append("APK contains multiple AndroidManifest.xml entries.")
         elif manifests:
