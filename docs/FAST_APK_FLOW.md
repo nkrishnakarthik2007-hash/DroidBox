@@ -48,6 +48,16 @@ These are targets, not guarantees. CI and benchmark fixtures will measure them.
 - detailed resources scan
 - compatibility diagnostics
 
+## UI states
+- **Empty:** large "Select APK" action, drag-and-drop target, and recent apps.
+- **Selected:** app identity and basic metadata appear in a compact card; no blocking setup wizard.
+- **Inspecting:** small, non-blocking progress indicator; shell controls remain usable.
+- **Ready to attempt:** Run button is enabled only when the intake has no known hard blocker.
+- **Limited:** Run may be available with clearly listed missing capabilities.
+- **Unsupported/unsafe:** Run is disabled with a concise reason and expandable report.
+- **Launching:** cancellable progress with a timeout; shell remains available.
+- **Failed:** concise reason, Retry and Close actions, technical details collapsed by default.
+
 ## Compatibility result honesty
 The inspector is not a runtime and must never claim an APK can run based only on metadata. "Ready to attempt" means no known intake blockers, not guaranteed execution.
 
