@@ -2,6 +2,7 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
 namespace DroidBox.Windows;
@@ -65,12 +66,15 @@ public partial class MainWindow : Window
             if (!activeProcess.Start()) { InspectStatus.Text = "Could not start the inspector."; return; }
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(15));
-            var stdoutTask = activeProcess.StandardOutput.ReadToEndAsync(timeout.Token);
-            var stderrTask = activeProcess.StandardError.ReadToEndAsync(timeout.Token);
-            await activeProcess.WaitForExitAsync(timeout.Token);
-            var output = await stdoutTask;
-            var error = await stderrTask;
-            if (output.Length > 10_000_000) { InspectStatus.Text = "Inspector output exceeded the safety limit."; return; }
+            var stdoutTask = ReadBoundedAsync(activeProcess.StandardOutput, 2_000_000, timeout.Token);
+            var stderrTask = ReadBoundedAsync(activeProcess.StandardError, 32_000, timeout.Token);
+            await Task.WhenAll(stdoutTask, stderrTask, activeProcess.WaitForExitAsync(timeout.Token));
+            var outputResult = await stdoutTask;
+            var errorResult = await stderrTask;
+            if (outputResult.truncated) { InspectStatus.Text = "Inspector output exceeded the safety limit."; return; }
+            var output = outputResult.text;
+            var error = errorResult.text;
+            if (errorResult.truncated) error += "\n[stderr truncated]";
             if (activeProcess.ExitCode != 0) { InspectStatus.Text = "Inspection failed."; MetadataText.Text = error.Length > 1200 ? error[..1200] : error; return; }
             using var json = JsonDocument.Parse(output);
             var data = json.RootElement;
@@ -97,6 +101,22 @@ public partial class MainWindow : Window
             MetadataText.Text = ex.Message.Length > 800 ? ex.Message[..800] : ex.Message;
         }
         finally { activeProcess?.Dispose(); }
+    }
+    // Drain process pipes to avoid deadlocks, but retain only a small bounded amount of text.
+    private static async Task<(string text, bool truncated)> ReadBoundedAsync(StreamReader reader, int maxChars, CancellationToken token)
+    {
+        var buffer = new char[4096];
+        var retained = new StringBuilder(Math.Min(maxChars, 4096));
+        var truncated = false;
+        while (true)
+        {
+            var read = await reader.ReadAsync(buffer.AsMemory(), token);
+            if (read == 0) break;
+            var remaining = maxChars - retained.Length;
+            if (remaining > 0) retained.Append(buffer, 0, Math.Min(read, remaining));
+            if (read > remaining) truncated = true;
+        }
+        return (retained.ToString(), truncated);
     }
     private static string? FindInspectorRoot()
     {
