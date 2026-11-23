@@ -91,6 +91,18 @@ class InspectorTests(unittest.TestCase):
         finally:
             os.unlink(temp.name)
 
+    def test_duplicate_noncritical_entry_warns(self):
+        temp = tempfile.NamedTemporaryFile(delete=False, suffix=".apk")
+        temp.close()
+        try:
+            with zipfile.ZipFile(temp.name, "w") as archive:
+                archive.writestr("classes.dex", b"first")
+                archive.writestr("classes.dex", b"second")
+            report = inspect_apk(temp.name, calculate_hash=False)
+            self.assertIn("APK contains duplicate archive entries.", report["warnings"])
+        finally:
+            os.unlink(temp.name)
+
     def test_missing_manifest(self):
         path = self.create_apk({"classes.dex": b"dex"})
         try:
