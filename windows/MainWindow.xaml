@@ -25,7 +25,7 @@
         <StackPanel>
           <TextBlock Text="Compatibility" FontSize="18" FontWeight="Bold"/>
           <Border Background="#30294C" CornerRadius="10" Padding="12" Margin="0,14,0,0"><TextBlock Text="Inspection only" Foreground="#B9ACFF" FontWeight="SemiBold"/></Border>
-          <TextBlock Text="APK metadata preview is being built. Android execution is not yet available." Foreground="#A4A4B3" TextWrapping="Wrap" Margin="0,12,0,0"/>
+          <TextBlock Text="APK metadata inspection is connected. Android execution is not yet available." Foreground="#A4A4B3" TextWrapping="Wrap" Margin="0,12,0,0"/>
           <Separator Margin="0,20,0,16" Background="#383844"/>
           <TextBlock Text="WHAT WILL BE CHECKED" FontSize="11" Foreground="#777783" FontWeight="Bold"/>
           <TextBlock Text="• Package &amp; version&#10;• Android SDK requirements&#10;• Requested permissions&#10;• DEX files &amp; native ABIs" Foreground="#D3D3DD" Margin="0,12,0,0" LineHeight="24"/>
