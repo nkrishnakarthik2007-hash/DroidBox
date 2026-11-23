@@ -19,9 +19,13 @@ Initial research snapshot: 2026-11-23. Verify upstream status and licenses befor
 | Open Android DeX (dotnetdreamer) | Phone-centric desktop via ADB/scrcpy and companion app | Phone required | Windows/macOS/Linux client | Desktop shell, launcher, multi-window, phone integration | Not independent PC runtime |
 | Google Play Games on PC | PC gaming platform using virtualization/runtime stack | Android compatibility environment | Windows | Graphics translation, game compatibility, packaging, performance | Gaming-focused; not lightweight 4 GB target |
 | WinDroid Runtime (Nova Systems Lab) | Windows management/tooling; long-term runtime research | Runtime not complete | Windows | Milestone sequencing, status transparency, diagnostics, security/legal boundaries | Early project; roadmap is not runtime capability |
+| Lunaria (yui0) | ARM32/ARM64 translation + DEX interpreter + Android service bridges | No full Android system image | Windows builds exist; native Windows display/audio evidence still limited | Package loading, ARM translation, JNI/GLES bridges, compatibility breadth, profiling | Active experimental project; Windows graphics/audio must be validated on real hardware; MPL-2.0 |
+| Stubuika (flessan) | Downstream fork of Lunaria, desktop compatibility runtime | No full Android system image | Windows release packages published | Launcher/CLI, package formats, diagnostics, compatibility reporting | Windows display/audio remain validation risks; downstream MPL-2.0 obligations and upstream attribution; package intake/security review required |
 
 ## Primary sources
 - Setu: https://github.com/namdpran8/Setu
+- Lunaria: https://github.com/yui0/lunaria
+- Stubuika: https://github.com/flessan/stubuika
 - WineDroid: https://github.com/sohzm/winedroid
 - Waydroid: https://github.com/waydroid/waydroid
 - Waydroid docs: https://github.com/waydroid/docs
@@ -35,13 +39,15 @@ Initial research snapshot: 2026-11-23. Verify upstream status and licenses befor
 - Google Play Games on PC: https://developer.android.com/games/playgames
 
 ## Initial conclusions
-1. Setu and WineDroid are closest to no-full-Android-OS concept. Compare code, dependencies and licenses before choosing components.
+1. Setu and WineDroid are closest to no-full-Android-OS concept, but a newer candidate is Lunaria/Stubuika. It already combines DEX execution, ARM translation and Android service bridges, with Windows packages. **DroidBox must benchmark and validate this candidate before deciding to build a runtime from scratch.**
 2. Waydroid is not a native Windows runtime. It needs Linux kernel capabilities and Android userspace. WSL2 may be a fallback but adds VM/kernel/disk/graphics overhead.
 3. WSA is an integration reference, not a base to redistribute. Microsoft's WSA repo is archived and support ended in 2025.
 4. OpenDeX is a separate product category: it remotes a phone's app into Windows windows; it is not standalone APK execution on PC.
 5. Android-x86/Bliss/Phoenix are OS projects. They teach PC porting, drivers and desktop adaptation, but conflict with the app-only UX goal.
 6. Compatibility is an API coverage problem. Tests and missing-API reports must exist from the start.
 7. A native runtime could be lightweight, but a 4 GB promise is not justified yet. Benchmark memory, CPU, startup and rendering.
+8. Fast APK selection is a separate requirement from runtime compatibility: inspection must not boot Android, extract the whole package, or execute app code. Keep preview fast and launch failures contained.
+9. Lunaria/Stubuika are promising reuse/benchmark candidates, not proven drop-in Windows engines. Validate license, build, Windows window/audio/graphics behavior, app compatibility, security isolation, startup time and RAM before adopting.
 
 ## License and reuse rule
 Before adopting code, record repository license, file-level notices, dependencies, provenance and compatibility with DroidBox's eventual license. Never copy code from unknown/incompatible licenses.
