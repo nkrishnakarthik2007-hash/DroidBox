@@ -8,7 +8,14 @@ DroidBox is an NKK-led open-source research project exploring a lightweight Andr
 
 **Made with love by N. Krishna Karthik ❤️**
 
-## Fast APK experience\n- APK selection immediately shows a preview; target is under 1 second for ordinary packages, measured on test hardware.\n- Selection does not extract the whole APK, install it, boot a VM, or execute app code.\n- Deeper analysis runs in the background and can be cancelled.\n- Unsupported packages receive a clear compatibility status; the launcher must not freeze or crash when a backend fails.\n- Fast preview is not a promise that an APK will launch.\n\n## Vision
+## Fast APK experience
+- APK selection immediately shows a preview; target is under 1 second for ordinary packages, measured on test hardware.
+- Selection does not extract the whole APK, install it, boot a VM, or execute app code.
+- Deeper analysis runs in the background and can be cancelled.
+- Unsupported packages receive a clear compatibility status; the launcher must not freeze or crash when a backend fails.
+- Fast preview is not a promise that an APK will launch.
+
+## Vision
 - Windows remains the host operating system.
 - The launcher is a native Windows application, not an Android home screen.
 - Apps open individually, not inside a visible Android desktop.
