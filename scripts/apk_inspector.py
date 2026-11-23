@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Safe, non-executing APK inventory prototype for DroidBox.
-
-This tool reads ZIP metadata and plain-text AndroidManifest.xml only. It does
-not extract files or execute APK code. Binary Android XML decoding is not yet
-implemented and is reported explicitly.
-"""
+"""Safe, non-executing APK inventory prototype for DroidBox."""
 from __future__ import annotations
 
 import argparse
@@ -14,7 +9,8 @@ import os
 import sys
 import zipfile
 from pathlib import PurePosixPath
-from xml.etree import ElementTree
+
+from scripts.axml import AXMLDecodeError, decode_axml
 
 MAX_ENTRIES = 100_000
 MAX_TOTAL_UNCOMPRESSED = 2 * 1024 * 1024 * 1024
@@ -25,6 +21,34 @@ ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
 def safe_entry_name(name: str) -> bool:
     path = PurePosixPath(name)
     return not path.is_absolute() and ".." not in path.parts and "\\x00" not in name
+
+
+def _manifest_info(root):
+    result = {
+        "package": root.attrib.get("package"),
+        "version_name": root.attrib.get(ANDROID_NS + "versionName"),
+        "version_code": root.attrib.get(ANDROID_NS + "versionCode"),
+        "min_sdk": None,
+        "target_sdk": None,
+        "permissions": [],
+        "activities": [],
+    }
+    for child in root:
+        tag = child.tag.rsplit("}", 1)[-1]
+        if tag == "uses-sdk":
+            result["min_sdk"] = child.attrib.get(ANDROID_NS + "minSdkVersion")
+            result["target_sdk"] = child.attrib.get(ANDROID_NS + "targetSdkVersion")
+        elif tag in ("uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-28"):
+            permission = child.attrib.get(ANDROID_NS + "name")
+            if permission:
+                result["permissions"].append(permission)
+        elif tag == "application":
+            for item in child:
+                if item.tag.rsplit("}", 1)[-1] in ("activity", "activity-alias"):
+                    name = item.attrib.get(ANDROID_NS + "name")
+                    if name:
+                        result["activities"].append(name)
+    return result
 
 
 def inspect_apk(path: str) -> dict:
@@ -83,32 +107,14 @@ def inspect_apk(path: str) -> dict:
                 result["manifest_status"] = "too_large"
                 result["warnings"].append("Manifest exceeds inspection size limit.")
             else:
-                manifest = apk.read(manifest_info)
                 try:
-                    root = ElementTree.fromstring(manifest)
-                except ElementTree.ParseError:
+                    root = decode_axml(apk.read(manifest_info))
+                except (AXMLDecodeError, ValueError, IndexError) as exc:
                     result["manifest_status"] = "binary_or_unreadable_xml"
-                    result["warnings"].append("AndroidManifest.xml is binary AXML or unreadable. Binary XML decoding is not implemented yet.")
+                    result["warnings"].append(f"Manifest could not be decoded: {exc}")
                 else:
-                    result["manifest_status"] = "parsed_plain_xml"
-                    result["package"] = root.attrib.get("package")
-                    result["version_name"] = root.attrib.get(ANDROID_NS + "versionName")
-                    result["version_code"] = root.attrib.get(ANDROID_NS + "versionCode")
-                    for child in root:
-                        tag = child.tag.rsplit("}", 1)[-1]
-                        if tag in ("uses-sdk",):
-                            result["min_sdk"] = child.attrib.get(ANDROID_NS + "minSdkVersion")
-                            result["target_sdk"] = child.attrib.get(ANDROID_NS + "targetSdkVersion")
-                        elif tag in ("uses-permission", "uses-permission-sdk-23"):
-                            permission = child.attrib.get(ANDROID_NS + "name")
-                            if permission:
-                                result["permissions"].append(permission)
-                        elif tag == "application":
-                            for item in child:
-                                if item.tag.rsplit("}", 1)[-1] == "activity":
-                                    name = item.attrib.get(ANDROID_NS + "name")
-                                    if name:
-                                        result["activities"].append(name)
+                    result["manifest_status"] = "decoded_binary_xml"
+                    result.update(_manifest_info(root))
         else:
             result["warnings"].append("AndroidManifest.xml not found.")
 
