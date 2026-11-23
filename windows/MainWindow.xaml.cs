@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     }
     private async Task InspectAsync(string apkPath, CancellationToken cancellationToken)
     {
+        Process? activeProcess = null;
         var root = FindInspectorRoot();
         if (root is null)
         {
@@ -60,17 +61,17 @@ public partial class MainWindow : Window
             psi.ArgumentList.Add("scripts.apk_inspector");
             psi.ArgumentList.Add("--skip-hash");
             psi.ArgumentList.Add(apkPath);
-            using var process = new Process { StartInfo = psi };
-            if (!process.Start()) { InspectStatus.Text = "Could not start the inspector."; return; }
+            activeProcess = new Process { StartInfo = psi };
+            if (!activeProcess.Start()) { InspectStatus.Text = "Could not start the inspector."; return; }
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(15));
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(timeout.Token);
-            var stderrTask = process.StandardError.ReadToEndAsync(timeout.Token);
-            await process.WaitForExitAsync(timeout.Token);
+            var stdoutTask = activeProcess.StandardOutput.ReadToEndAsync(timeout.Token);
+            var stderrTask = activeProcess.StandardError.ReadToEndAsync(timeout.Token);
+            await activeProcess.WaitForExitAsync(timeout.Token);
             var output = await stdoutTask;
             var error = await stderrTask;
             if (output.Length > 10_000_000) { InspectStatus.Text = "Inspector output exceeded the safety limit."; return; }
-            if (process.ExitCode != 0) { InspectStatus.Text = "Inspection failed."; MetadataText.Text = error.Length > 1200 ? error[..1200] : error; return; }
+            if (activeProcess.ExitCode != 0) { InspectStatus.Text = "Inspection failed."; MetadataText.Text = error.Length > 1200 ? error[..1200] : error; return; }
             using var json = JsonDocument.Parse(output);
             var data = json.RootElement;
             string Read(string key) => data.TryGetProperty(key, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : "—";
@@ -87,8 +88,10 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
+            try { if (activeProcess is { HasExited: false }) activeProcess.Kill(entireProcessTree: true); } catch { }
             InspectStatus.Text = "Inspection cancelled or timed out.";
         }
+        finally { activeProcess?.Dispose(); }
         catch (Exception ex)
         {
             InspectStatus.Text = "Inspector unavailable. Check Python installation.";
