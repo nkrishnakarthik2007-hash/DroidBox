@@ -123,6 +123,46 @@ public partial class MainWindow : Window
         UpdateRunButton();
         SaveRuntimeSettings();
     }
+    private async void CheckRuntimeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_runtimePath) || !File.Exists(_runtimePath))
+        {
+            RuntimeDiagnosticsText.Text = "Select a runtime executable first.";
+            return;
+        }
+        RuntimeDiagnosticsText.Text = "Checking runtime and Windows host…";
+        Process? process = null;
+        try
+        {
+            var psi = new ProcessStartInfo(_runtimePath) { WorkingDirectory = Path.GetDirectoryName(_runtimePath) ?? AppContext.BaseDirectory, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+            psi.ArgumentList.Add("diagnostics");
+            psi.ArgumentList.Add("--json");
+            process = new Process { StartInfo = psi };
+            if (!process.Start()) { RuntimeDiagnosticsText.Text = "Could not start runtime diagnostics."; return; }
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            var stdout = ReadBoundedAsync(process.StandardOutput, 24_000, timeout.Token);
+            var stderr = ReadBoundedAsync(process.StandardError, 8_000, timeout.Token);
+            await Task.WhenAll(stdout, stderr, process.WaitForExitAsync(timeout.Token));
+            var output = (await stdout).text;
+            var error = (await stderr).text;
+            if (process.ExitCode == 0)
+            {
+                RuntimeDiagnosticsText.Text = "Runtime diagnostics completed.\n" + (output.Length > 1800 ? output[..1800] : output);
+            }
+            else
+            {
+                var detail = string.IsNullOrWhiteSpace(error) ? output : error;
+                RuntimeDiagnosticsText.Text = $"Diagnostics exited with code {process.ExitCode}.\n" + (detail.Length > 1400 ? detail[..1400] : detail);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            try { if (process is { HasExited: false }) process.Kill(entireProcessTree: true); } catch { }
+            RuntimeDiagnosticsText.Text = "Runtime diagnostics timed out after 12 seconds.";
+        }
+        catch (Exception ex) { RuntimeDiagnosticsText.Text = "Runtime diagnostics failed: " + (ex.Message.Length > 500 ? ex.Message[..500] : ex.Message); }
+        finally { process?.Dispose(); }
+    }
     private void RunAppButton_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_selectedApkPath) || !File.Exists(_selectedApkPath))
