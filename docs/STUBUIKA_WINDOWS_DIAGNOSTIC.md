@@ -136,3 +136,17 @@ The distribution script expects font assets from the sibling `luna-shell/skins/f
 
 Before changing the runtime package, obtain and verify a trusted x86_64 Windows HarfBuzz 10.2.0 build (or reproducibly build that exact tag), inspect its PE dependencies, and confirm the DLL can be resolved from the staged executable directory. Then add the DLL, its licence, and a manifest/check to a reproducible Windows package build. In parallel, resolve the licensed font source. Only after that package is produced should the Smoke Test APK be rerun.
 
+### HarfBuzz release asset and font provenance follow-up
+
+The official HarfBuzz **10.2.0** GitHub release contains a named x64 Windows archive, `harfbuzz-win64-10.2.0.zip` (release asset ID `219670715`, published 2025-01-11, 5,576,730 bytes). This is a legitimate upstream candidate for the pinned version; the asset metadata currently exposes no SHA-256 digest. Before using it in automated packaging, the archive contents, DLL name, PE architecture, imported DLL dependencies, and licence file must be inspected. Do not treat the release asset's existence as proof that it is already compatible with Stubuika's dynamic loader.
+
+The Stubuika source tree declares a `src/luna-ui` Git submodule pointing to `Berry-OS/luna-ui`. That repository's current `fonts/` directory contains `Inter-Regular.ttf`, `LunaSymbols-Solid.otf`, and `LunaSymbols-Brands.otf`, but it does **not** contain the exact `Inter-Bold.ttf` filename expected by the packaging script. Its font README identifies the LunaSymbols faces as derived from Font Awesome 7, but does not state their complete font-specific redistribution licence. The repository-wide MPL-2.0 licence must not be assumed to settle the licensing of every bundled font asset.
+
+The Inter upstream repository provides a separate `LICENSE.txt`; the Inter font is distributed under the SIL Open Font License. This makes Inter a promising independently licensed fallback, provided the exact font binary/version and matching licence notice are packaged together. See:
+- [Inter upstream licence](https://github.com/rsms/inter/blob/master/LICENSE.txt)
+- [Luna UI font inventory](https://github.com/Berry-OS/luna-ui/tree/master/fonts)
+- [Luna UI font README](https://github.com/Berry-OS/luna-ui/blob/master/fonts/README.md)
+- [HarfBuzz 10.2.0 official Windows x64 release asset](https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/harfbuzz-win64-10.2.0.zip)
+
+**Decision:** use the official HarfBuzz 10.2.0 x64 release as the first candidate to inspect, not as an already approved binary dependency. Use Inter only after pinning its source revision and carrying its OFL notice. Do not redistribute the LunaSymbols fonts until their upstream font-specific terms and required attribution are confirmed. The missing bold face can be handled by a documented fallback only after verifying that the renderer accepts the same regular font for both regular and bold roles.
+
