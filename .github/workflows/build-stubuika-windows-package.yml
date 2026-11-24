@@ -1,0 +1,96 @@
+name: Build DroidBox Stubuika Windows Runtime Package
+
+on:
+  push:
+    paths:
+      - ".github/workflows/build-stubuika-windows-package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Download Stubuika Windows x64 runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $uri = "https://github.com/flessan/stubuika/releases/download/stubuika-v2026.11.08/stubuika-2026-11-08-windows-x86_64.zip"
+          Invoke-WebRequest -Uri $uri -OutFile stubuika.zip
+          if ((Get-Item stubuika.zip).Length -lt 10000000) {
+            throw "Stubuika runtime archive is unexpectedly small."
+          }
+          Expand-Archive stubuika.zip -DestinationPath runtime-source -Force
+          $exe = Get-ChildItem runtime-source -Recurse -Filter stubuika.exe | Select-Object -First 1
+          if (-not $exe) { throw "stubuika.exe was not found in the official runtime archive." }
+          "Found runtime executable: $($exe.FullName)"
+          "Runtime archive SHA256: $((Get-FileHash stubuika.zip -Algorithm SHA256).Hash)"
+          "RUNTIME_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      - name: Add HarfBuzz 10.2.0 and licensed font fallback
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = $env:RUNTIME_EXE
+          $root = Split-Path $exe -Parent
+          $hbZip = "harfbuzz-win64-10.2.0.zip"
+          Invoke-WebRequest -Uri "https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/$hbZip" -OutFile $hbZip
+          Expand-Archive $hbZip -DestinationPath harfbuzz-source -Force
+          $dlls = Get-ChildItem harfbuzz-source -Recurse -Filter *.dll
+          $hb = $dlls | Where-Object Name -eq "libharfbuzz-0.dll" | Select-Object -First 1
+          if (-not $hb) { throw "Official HarfBuzz bundle does not contain libharfbuzz-0.dll." }
+          $bytes = [IO.File]::ReadAllBytes($hb.FullName)
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          if ([BitConverter]::ToUInt16($bytes, $peOffset + 4) -ne 0x8664) {
+            throw "HarfBuzz DLL is not x64."
+          }
+          # Place every DLL beside stubuika.exe so LoadLibraryW's application-
+          # directory lookup can resolve HarfBuzz and its bundled dependencies.
+          Copy-Item $dlls.FullName $root -Force
+
+          $fonts = Join-Path $root "fonts"
+          New-Item -ItemType Directory -Force -Path $fonts | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Berry-OS/luna-ui/master/fonts/Inter-Regular.ttf" -OutFile (Join-Path $fonts "Inter-Regular.ttf")
+          Copy-Item (Join-Path $fonts "Inter-Regular.ttf") (Join-Path $fonts "Inter-Bold.ttf") -Force
+
+          $licenses = Join-Path $root "licenses"
+          New-Item -ItemType Directory -Force -Path $licenses | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/harfbuzz/harfbuzz/10.2.0/COPYING" -OutFile (Join-Path $licenses "HarfBuzz-COPYING")
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/rsms/inter/master/LICENSE.txt" -OutFile (Join-Path $licenses "Inter-OFL.txt")
+          if ((Get-Item (Join-Path $fonts "Inter-Regular.ttf")).Length -lt 100000) {
+            throw "Inter font is unexpectedly small."
+          }
+          if (-not (Test-Path (Join-Path $root "libharfbuzz-0.dll"))) {
+            throw "HarfBuzz was not staged beside stubuika.exe."
+          }
+          "Runtime root: $root"
+          "HarfBuzz DLLs copied: $($dlls.Count)"
+          "Font files: $((Get-ChildItem $fonts -File).Count)"
+
+      - name: Write package notes and archive runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = $env:RUNTIME_EXE
+          $root = Split-Path $exe -Parent
+          @(
+            "DroidBox Stubuika Windows x64 dependency experiment",
+            "Base runtime: Stubuika v2026.11.08 official Windows x86_64 archive",
+            "Text shaping candidate: HarfBuzz 10.2.0 official Windows x64 release bundle",
+            "All HarfBuzz release DLLs are placed beside stubuika.exe for Windows application-directory DLL lookup.",
+            "Font: Inter-Regular.ttf from Berry-OS/luna-ui; Inter OFL notice included.",
+            "Inter-Bold.ttf is temporarily the same file as Inter-Regular.ttf; bold weight is not provided by this fallback.",
+            "LunaSymbols fonts are omitted pending font-specific licence verification.",
+            "This package is an experiment. It has not yet passed the DroidBox Smoke Test UI-rendering gate.",
+            "Only run trusted APKs. This runtime package does not provide DroidBox sandbox isolation."
+          ) | Set-Content (Join-Path $root "DROIDBOX-DEPENDENCIES.txt")
+          Compress-Archive -Path (Join-Path $root "*") -DestinationPath DroidBox-Stubuika-Windows-x64-Experimental.zip -Force
+
+      - name: Upload complete runtime package
+        uses: actions/upload-artifact@v4
+        with:
+          name: droidbox-stubuika-windows-x64-experimental
+          path: DroidBox-Stubuika-Windows-x64-Experimental.zip
+          retention-days: 14
