@@ -23,6 +23,7 @@ Get a real Android APK executing through an external runtime within the first we
 - [x] Safe metadata inspection in the shell.
 - [x] External runtime selection and saved path.
 - [x] Explicit launch button and warning that APK code is not sandboxed by DroidBox.
+- [x] Runtime process tracking, duplicate-launch prevention, and stop-process-tree control.
 - [x] Verified upstream Stubuika documentation shows direct Windows package launch syntax (`stubuika.exe app.apk`); this confirms CLI shape only, not successful execution on the target laptop.
 - [ ] Native Windows runtime smoke test on target laptop.
 - [ ] App compatibility evidence and measurements.
