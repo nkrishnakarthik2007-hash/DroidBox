@@ -67,6 +67,22 @@ jobs:
           }
           "Runtime root: $root"
           "HarfBuzz DLLs copied: $($dlls.Count)"
+          python -m pip install --disable-pip-version-check pefile
+          @'
+          import os, pefile
+          root = os.environ["RUNTIME_EXE"]
+          root = os.path.dirname(root)
+          bundled = {name.lower() for name in os.listdir(root) if name.lower().endswith(".dll")}
+          system = {name.lower() for name in os.listdir(os.path.join(os.environ["WINDIR"], "System32")) if name.lower().endswith(".dll")}
+          pe = pefile.PE(os.path.join(root, "libharfbuzz-0.dll"))
+          imports = sorted({entry.dll.decode("ascii", "replace").lower() for entry in pe.DIRECTORY_ENTRY_IMPORT})
+          missing = [name for name in imports if name not in bundled and name not in system]
+          print("HarfBuzz direct imports:", ", ".join(imports))
+          print("Not bundled or Windows system DLL:", ", ".join(missing) if missing else "none")
+          if missing:
+              raise SystemExit("Unresolved HarfBuzz imports detected")
+          '@ | Set-Content inspect_imports.py
+          python inspect_imports.py
           Add-Type -TypeDefinition @"
           using System;
           using System.Runtime.InteropServices;
