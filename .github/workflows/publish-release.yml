@@ -1,0 +1,98 @@
+name: Build and publish DroidBox updates
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "windows/**"
+      - "scripts/**"
+      - ".github/workflows/publish-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: droidbox-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build and test WPF application
+        run: dotnet build windows/DroidBox.Windows.csproj --configuration Release
+
+      - name: Publish self-contained Windows x64 application
+        run: dotnet publish windows/DroidBox.Windows.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false --output artifacts/DroidBox-win-x64
+
+      - name: Bundle the APK inspector
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = "artifacts/DroidBox-win-x64"
+          $pythonZip = "python-3.12.10-embed-amd64.zip"
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.10/$pythonZip" -OutFile $pythonZip
+          $pythonDir = Join-Path $root "python"
+          New-Item -ItemType Directory -Force -Path $pythonDir | Out-Null
+          Expand-Archive $pythonZip -DestinationPath $pythonDir -Force
+          $scriptsDir = Join-Path $root "scripts"
+          New-Item -ItemType Directory -Force -Path $scriptsDir | Out-Null
+          Copy-Item "scripts/*" $scriptsDir -Recurse -Force
+          if (-not (Test-Path (Join-Path $scriptsDir "apk_inspector.py"))) { throw "APK inspector source missing." }
+          $pth = Join-Path $pythonDir "python312._pth"
+          if (-not (Test-Path $pth)) { throw "Embedded Python path configuration missing." }
+          $rootFull = (Resolve-Path $root).Path
+          $lines = Get-Content $pth
+          if ($lines -notcontains $rootFull) { Add-Content -Path $pth -Value $rootFull }
+          $pythonExe = (Resolve-Path (Join-Path $pythonDir "python.exe")).Path
+          & $pythonExe --version
+          if ($LASTEXITCODE -ne 0) { throw "Bundled Python failed to start." }
+          $probeCode = "import runpy,sys; sys.path.insert(0, sys.argv.pop(1)); runpy.run_module('scripts.apk_inspector', run_name='__main__')"
+          & $pythonExe -c $probeCode $rootFull --help
+          if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed its startup check." }
+
+      - name: Install Velopack CLI
+        shell: pwsh
+        run: |
+          dotnet tool install --global vpk --version 1.2.161
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          vpk --version
+
+      - name: Package installable and updateable DroidBox
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "0.1.${{ github.run_number }}"
+          vpk pack --packId NKK.DroidBox --packVersion $version --packDir artifacts/DroidBox-win-x64 --mainExe DroidBox.Windows.exe --outputDir artifacts/velopack --channel win
+          if (-not (Test-Path "artifacts/velopack/releases.win.json")) { throw "Velopack release feed was not generated." }
+          if (-not (Get-ChildItem "artifacts/velopack" -Filter "*Setup.exe")) { throw "Velopack installer was not generated." }
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "0.1.${{ github.run_number }}"
+          $tag = "v$version"
+          $assets = @(Get-ChildItem "artifacts/velopack" -File | ForEach-Object { $_.FullName })
+          if ($assets.Count -eq 0) { throw "No Velopack release assets found." }
+          gh release create $tag @assets --repo $env:GITHUB_REPOSITORY --title "DroidBox $version" --notes "Automated DroidBox Windows release from commit $env:GITHUB_SHA. Install with the Setup.exe file. Installed copies can check this public GitHub Releases feed for updates." --latest
+
+      - name: Upload installer preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DroidBox-Velopack-Installer
+          path: artifacts/velopack/*
+          if-no-files-found: error
+          retention-days: 14
