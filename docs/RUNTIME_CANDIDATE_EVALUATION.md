@@ -1,6 +1,6 @@
 # Runtime Candidate Evaluation — Lunaria / Stubuika
 
-**Status:** runtime bridge experiment underway. The Windows shell now has an external-runtime launch path; native Windows display/audio behavior remains unverified.
+**Status:** external-runtime bridge implemented; latest Windows shell CI passed. No native Windows APK execution has yet been demonstrated by DroidBox. Upstream Stubuika documentation explicitly says Windows display/audio have not been verified on native Windows hardware.
 
 ## Current evidence checked
 - Lunaria: https://github.com/yui0/lunaria
@@ -60,3 +60,14 @@ Prototype security boundary:
 
 ## Decision
 Use the prebuilt Windows runtime for rapid feasibility testing, then evaluate compatibility and license obligations before bundling or redistribution. Do not claim app compatibility from inspection or runtime launch alone.
+
+
+## Architecture clarification
+
+Stubuika is **not** Android apps running with no Android runtime. It is an Android compatibility runtime: it loads APK code, interprets DEX, translates ARM guest native code to the host, and implements or bridges selected Android APIs and services. It avoids booting a complete Android system image, but still contains substantial Android runtime and compatibility machinery. This is currently the closest fit to our lightweight/no-full-OS goal.
+
+The published Windows ZIP is documented as self-contained (no separate MSYS2, Python, or ICU runtime install). However, upstream says Windows ABI and EGL/GLES initialization were checked under Wine; native Windows display and audio remain unverified. This is the central feasibility risk, not the APK command-line syntax.
+
+## Windows bridge behavior
+
+DroidBox now accepts a user-selected executable path rather than requiring a specific filename. It passes the APK as one argument using ProcessStartInfo.ArgumentList, tracks the launched process, prevents duplicate launches while one is active, and provides a stop action for the runtime process tree. A process start or zero exit code is not proof of successful APK rendering; visual confirmation and logs are still required.
