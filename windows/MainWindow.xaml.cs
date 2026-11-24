@@ -5,6 +5,8 @@ using System.Text.Json;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
+using Velopack;
+using Velopack.Sources;
 namespace DroidBox.Windows;
 public partial class MainWindow : Window
 {
@@ -12,8 +14,73 @@ public partial class MainWindow : Window
     private string? _selectedApkPath;
     private string? _runtimePath;
     private Process? _activeRuntimeProcess;
+    private UpdateManager? _updateManager;
+    private bool _updateCheckRunning;
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "settings.json");
-    public MainWindow() { InitializeComponent(); LoadRuntimeSettings(); }
+    public MainWindow()
+    {
+        InitializeComponent();
+        LoadRuntimeSettings();
+        Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
+    }
+
+    private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
+        => await CheckForUpdatesAsync(showNoUpdates: true);
+
+    private async Task CheckForUpdatesAsync(bool showNoUpdates)
+    {
+        if (_updateCheckRunning) return;
+        _updateCheckRunning = true;
+        try
+        {
+            _updateManager ??= new UpdateManager(
+                new GithubSource("https://github.com/nkrishnakarthik2007-hash/DroidBox", accessToken: null, prerelease: false));
+
+            if (!_updateManager.IsInstalled)
+            {
+                UpdateStatusText.Text = "Automatic updates activate after installing DroidBox Setup.";
+                if (showNoUpdates)
+                    MessageBox.Show("This is a portable preview. Install DroidBox using the Setup installer from GitHub Releases to enable automatic updates.", "DroidBox updates", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            UpdateStatusText.Text = "Checking GitHub for updates…";
+            var update = await _updateManager.CheckForUpdatesAsync();
+            if (update is null)
+            {
+                UpdateStatusText.Text = "DroidBox is up to date.";
+                if (showNoUpdates)
+                    MessageBox.Show("You're using the latest DroidBox version.", "DroidBox updates", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var version = update.TargetFullRelease.Version.ToString();
+            var answer = MessageBox.Show(
+                $"DroidBox version {version} is available. Download and restart now? Your APKs, settings and logs are stored separately from application files.",
+                "DroidBox update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (answer != MessageBoxResult.Yes)
+            {
+                UpdateStatusText.Text = $"Update {version} is available. You can install it later.";
+                return;
+            }
+
+            UpdateStatusText.Text = "Downloading update… 0%";
+            await _updateManager.DownloadUpdatesAsync(update, percent =>
+                Dispatcher.Invoke(() => UpdateStatusText.Text = $"Downloading update… {percent}%"));
+            UpdateStatusText.Text = "Update downloaded. Restarting DroidBox…";
+            _updateManager.ApplyUpdatesAndRestart(update.TargetFullRelease);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText.Text = "Update check unavailable. You can try again later.";
+            if (showNoUpdates)
+                MessageBox.Show(ex.Message, "DroidBox update check failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _updateCheckRunning = false;
+        }
+    }
     private void SelectButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Title = "Select Android APK", Filter = "Android packages (*.apk)|*.apk", CheckFileExists = true };
