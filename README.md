@@ -56,11 +56,11 @@ We will not commit to one backend until experiments and benchmarks are documente
 - [ ] Optional WSL/Waydroid feasibility experiment
 - [ ] Window integration and resource benchmarks
 
-See [Fast APK Flow](docs/FAST_APK_FLOW.md), [Security Model](docs/SECURITY_MODEL.md), Research Matrix, Architecture and Roadmap in docs.
+See [Fast APK Flow](docs/FAST_APK_FLOW.md), [Security Model](docs/SECURITY_MODEL.md), [Runtime Smoke Test](docs/RUNTIME_SMOKE_TEST.md), and the [Stubuika Windows diagnostic](docs/STUBUIKA_WINDOWS_DIAGNOSTIC.md).
 
 ## Windows shell prototype
 
-A first WPF shell is now in `windows/`. It supports APK selection and drag/drop, and is being connected to the safe Python inspector for package metadata. Android execution is not available. Build it on Windows with the .NET 8 SDK:
+A first WPF shell is now in `windows/`. It supports APK selection and drag/drop, safe APK metadata inspection, runtime selection, launch, and stop controls. A Stubuika Windows launch was attempted, but the smoke-test window was black and Luna UI reported a text-shaping failure. This is not a working-app result; see the diagnostic report. Build the shell on Windows with the .NET 8 SDK:
 
 ```powershell
 cd windows
@@ -70,7 +70,7 @@ dotnet run
 A Windows CI workflow builds this shell on GitHub Actions.
 
 ## Status
-**Stage 0 — research and feasibility, with an early Windows shell scaffold.** No Android runtime is implemented yet. This repository is the source of truth for research, decisions, experiments and future code.
+**Stage 0 — research and feasibility, with an early Windows shell and runtime-launch experiment.** DroidBox does not yet provide verified Android app execution. The current Stubuika Windows attempt creates a window but fails to render the smoke-test UI. Native rendering, input, persistence, security isolation, and broad compatibility remain unverified.
 
 ## Contributing
 See CONTRIBUTING.md. Please open an issue before large architectural changes.
