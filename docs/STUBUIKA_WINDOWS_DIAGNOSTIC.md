@@ -170,3 +170,20 @@ The complete experimental runtime package was successfully generated as GitHub A
 
 **Important validation boundary:** this package-generation success does not prove that HarfBuzz can be loaded by the runtime process, that the exact text-shaping exception is fixed, or that the Android smoke-test UI renders. The package workflow now adds a Windows `LoadLibrary` + `GetProcAddress(hb_version_string)` probe to validate the DLL and its dependent DLLs before producing the next artifact. The actual Android UI-rendering gate still requires running the smoke APK under Stubuika and observing a non-black, interactive window on a Windows desktop.
 
+### Windows DLL-load probe passed; smoke-test bundle prepared
+
+On Windows CI, the package workflow now performs all of these checks before packaging:
+
+1. Downloads the pinned Stubuika v2026.11.08 Windows x64 archive.
+2. Downloads HarfBuzz 10.2.0 Windows x64 and stages all 18 DLLs beside `stubuika.exe`.
+3. Checks the recursive import closure of `libharfbuzz-0.dll` against the package and Windows System32.
+4. Sets the runtime folder as the DLL search directory in the PowerShell probe (the probe process itself is PowerShell, not Stubuika).
+5. Calls Windows `LoadLibrary` on the HarfBuzz DLL and verifies the `hb_version_string` export with `GetProcAddress`.
+6. Stages the Inter font fallback and licence notices, then builds the complete experimental runtime archive.
+
+Workflow run `45324542960` completed successfully. Artifact: `droidbox-stubuika-windows-x64-experimental`, ID `14889316082`.
+
+The package was downloaded and inspected again. It contains 50 runtime entries, including `stubuika.exe`, `libharfbuzz-0.dll`, 32 x64 DLLs in total, Inter font files, and licence notices. The separate smoke-test APK artifact from run `45319538426` was added to a local combined test bundle under `tests/DroidBox-SmokeTest.apk`.
+
+**Still unverified:** Stubuika's own HarfBuzz adapter loading path, the exact `Text shaping unavailable` exception, actual font rendering, Android Activity UI rendering, input, persistence, and the remaining Android APIs. The CI loader probe proves that Windows can load the HarfBuzz library from the staged directory; it does not run the Android APK or observe a GUI window. The user-side smoke test remains the next necessary validation gate.
+
