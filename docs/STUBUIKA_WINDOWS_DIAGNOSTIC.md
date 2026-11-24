@@ -105,3 +105,12 @@ Do not patch the user's Windows installation by copying random DLLs. First creat
 6. Re-runs the DroidBox smoke-test APK on Windows and separately records UI rendering, text, input, persistence, and file-I/O results.
 
 Until that experiment passes, keep Stubuika marked experimental / blocked for usable UI in DroidBox.
+
+
+### Windows loader behavior confirmed
+
+The Windows OS bridge implements `luna_os_library_open()` with `LoadLibraryW()`; `luna_os_library_open_local()` simply calls that function. The HarfBuzz adapter passes bare DLL names, not an absolute path. Therefore Windows must be able to resolve one of those DLL names through its DLL search rules. The official distribution's PE import-table scan alone does not guarantee this dynamically loaded dependency is present.
+
+This strengthens the packaging hypothesis: the Windows release needs an explicit HarfBuzz DLL staging rule and a validation check, rather than assuming the normal import-closure bundler will find it.
+
+Reference: [Windows dynamic library loader bridge](https://github.com/flessan/stubuika/blob/79194ef09802ee56ffd3b68328140f2265bf3690/src/lunaria_windows.c).
