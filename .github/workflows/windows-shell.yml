@@ -49,8 +49,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Bundled Python failed to start." }
           Push-Location $rootFull
           try {
-            $pythonArgs = @("-m", "scripts.apk_inspector", "--help")
-            & $pythonExe @pythonArgs
+            & "$pythonExe" "-m" "scripts.apk_inspector" "--help"
             if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed to load." }
           } finally {
             Pop-Location
