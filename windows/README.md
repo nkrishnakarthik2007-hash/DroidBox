@@ -9,6 +9,7 @@ This is the early WPF shell for **DroidBox by NKK**. The Windows preview is publ
 - Run Stubuika host diagnostics from inside DroidBox.
 - Launch the selected APK in the external runtime after a clear security warning.
 - Stop the launched runtime process tree.
+- Capture runtime stdout/stderr in a bounded diagnostic log under `%LOCALAPPDATA%\\DroidBox\\Logs`.
 
 ## Get a preview build
 Open the [Windows shell build workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/windows-shell.yml), select the latest successful run, and download the **DroidBox-Windows-x64-preview** artifact. Extract the ZIP and run `DroidBox.Windows.exe`.
