@@ -132,6 +132,34 @@ jobs:
           }
           "Font files: $((Get-ChildItem $fonts -File).Count)"
 
+      - name: Smoke-test Stubuika CLI on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = $env:RUNTIME_EXE
+          $version = & $exe --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Stubuika --version failed: $($version | Out-String)"
+          }
+          "Stubuika version: $($version | Out-String)"
+          $diagnostics = & $exe diagnostics --json 2>&1
+          $exitCode = $LASTEXITCODE
+          $diagnosticsText = $diagnostics | Out-String
+          $diagnosticsText | Set-Content runtime-diagnostics.json
+          if ($exitCode -ne 0) {
+            throw "Stubuika diagnostics failed with exit code $exitCode. $diagnosticsText"
+          }
+          try {
+            $report = $diagnosticsText | ConvertFrom-Json -ErrorAction Stop
+          } catch {
+            throw "Stubuika diagnostics did not return valid JSON: $diagnosticsText"
+          }
+          if ($null -eq $report) {
+            throw "Stubuika diagnostics returned an empty report."
+          }
+          "Windows runtime CLI and diagnostics smoke test passed."
+          "Diagnostics report saved to runtime-diagnostics.json"
+
       - name: Write package notes and archive runtime
         shell: pwsh
         run: |
