@@ -117,6 +117,11 @@ public partial class MainWindow : Window
         try { Process.Start(new ProcessStartInfo("https://github.com/flessan/stubuika/releases") { UseShellExecute = true }); }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Could not open runtime downloads", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
+    private void DownloadTestApkButton_Click(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/build-smoke-test-apk.yml") { UseShellExecute = true }); }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "Could not open test APK workflow", MessageBoxButton.OK, MessageBoxImage.Warning); }
+    }
     private void SelectRuntimeButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Title = "Select Stubuika or Lunaria runtime", Filter = "Runtime executable (*.exe)|*.exe", CheckFileExists = true };
