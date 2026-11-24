@@ -191,7 +191,10 @@ public partial class MainWindow : Window
             var psi = new ProcessStartInfo(_runtimePath)
             {
                 WorkingDirectory = Path.GetDirectoryName(_runtimePath) ?? AppContext.BaseDirectory,
-                UseShellExecute = false
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = false
             };
             if (_activeRuntimeProcess is { HasExited: false })
             {
@@ -199,15 +202,36 @@ public partial class MainWindow : Window
                 return;
             }
             psi.ArgumentList.Add(_selectedApkPath);
+            var logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Logs");
+            Directory.CreateDirectory(logDirectory);
+            var logPath = Path.Combine(logDirectory, $"runtime-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            var logLock = new object();
+            void WriteRuntimeLog(string source, string? line)
+            {
+                if (line is null) return;
+                try
+                {
+                    lock (logLock)
+                    {
+                        var currentSize = File.Exists(logPath) ? new FileInfo(logPath).Length : 0;
+                        if (currentSize >= 2 * 1024 * 1024) return;
+                        File.AppendAllText(logPath, $"[{DateTime.Now:O}] [{source}] {line}{Environment.NewLine}");
+                    }
+                }
+                catch { /* Logging must never prevent the runtime from running. */ }
+            }
             var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            process.OutputDataReceived += (_, args) => WriteRuntimeLog("stdout", args.Data);
+            process.ErrorDataReceived += (_, args) => WriteRuntimeLog("stderr", args.Data);
             process.Exited += (_, _) => Dispatcher.BeginInvoke(() =>
             {
                 if (!ReferenceEquals(_activeRuntimeProcess, process)) return;
                 var exitCode = process.ExitCode;
+                WriteRuntimeLog("droidbox", $"Runtime exited with code {exitCode}.");
                 _activeRuntimeProcess = null;
                 StopRuntimeButton.IsEnabled = false;
                 UpdateRunButton();
-                InspectStatus.Text = $"Runtime process exited (code {exitCode}). Check runtime diagnostics if the app did not appear.";
+                InspectStatus.Text = $"Runtime exited (code {exitCode}). Log: {logPath}";
                 process.Dispose();
             });
             if (!process.Start())
@@ -216,10 +240,13 @@ public partial class MainWindow : Window
                 InspectStatus.Text = "Windows could not start the runtime process.";
                 return;
             }
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
             _activeRuntimeProcess = process;
             StopRuntimeButton.IsEnabled = true;
             RunAppButton.IsEnabled = false;
-            InspectStatus.Text = $"Runtime process started (PID {process.Id}). This does not confirm successful APK rendering.";
+            WriteRuntimeLog("droidbox", $"Started PID {process.Id}; APK: {_selectedApkPath}");
+            InspectStatus.Text = $"Runtime started (PID {process.Id}). Log: {logPath}. This does not confirm successful APK rendering.";
         }
         catch (Exception ex)
         {
