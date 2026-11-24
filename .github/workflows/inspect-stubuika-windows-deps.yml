@@ -1,0 +1,61 @@
+name: Inspect Stubuika Windows Dependencies
+
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect-stubuika-windows-deps.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: windows-latest
+    steps:
+      - name: Download pinned HarfBuzz Windows x64 release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $uri = "https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/harfbuzz-win64-10.2.0.zip"
+          Invoke-WebRequest -Uri $uri -OutFile harfbuzz-win64-10.2.0.zip
+          if ((Get-Item harfbuzz-win64-10.2.0.zip).Length -lt 1000000) {
+            throw "HarfBuzz archive is unexpectedly small."
+          }
+          Get-FileHash harfbuzz-win64-10.2.0.zip -Algorithm SHA256 | Format-List
+          Expand-Archive harfbuzz-win64-10.2.0.zip -DestinationPath harfbuzz -Force
+
+      - name: Inspect DLLs and architecture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dlls = Get-ChildItem harfbuzz -Recurse -Filter *.dll
+          if (-not $dlls) { throw "No DLLs found in official HarfBuzz archive." }
+          $dlls | Select-Object FullName, Length | Format-Table -AutoSize
+          $hb = $dlls | Where-Object { $_.Name -eq "libharfbuzz-0.dll" } | Select-Object -First 1
+          if (-not $hb) { throw "Expected libharfbuzz-0.dll was not found." }
+          $bytes = [IO.File]::ReadAllBytes($hb.FullName)
+          if ($bytes.Length -lt 256 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+            throw "HarfBuzz DLL does not have a valid PE header."
+          }
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          if ([BitConverter]::ToUInt32($bytes, $peOffset) -ne 0x00004550) {
+            throw "Invalid PE signature."
+          }
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) {
+            throw ("Expected x64 PE machine 0x8664, got 0x{0:X4}" -f $machine)
+          }
+          "Validated x64 HarfBuzz DLL: $($hb.FullName)"
+          $license = Get-ChildItem harfbuzz -Recurse -File | Where-Object { $_.Name -match '^(COPYING|LICENSE)(\\..*)?$' }
+          if (-not $license) { throw "No HarfBuzz licence notice found in release archive." }
+          $license | Select-Object FullName, Length | Format-Table -AutoSize
+
+      - name: Upload inspection report
+        uses: actions/upload-artifact@v4
+        with:
+          name: stubuika-windows-dependency-inspection
+          path: |
+            harfbuzz
+            harfbuzz-win64-10.2.0.zip
+          retention-days: 14
