@@ -114,3 +114,25 @@ The Windows OS bridge implements `luna_os_library_open()` with `LoadLibraryW()`;
 This strengthens the packaging hypothesis: the Windows release needs an explicit HarfBuzz DLL staging rule and a validation check, rather than assuming the normal import-closure bundler will find it.
 
 Reference: [Windows dynamic library loader bridge](https://github.com/flessan/stubuika/blob/79194ef09802ee56ffd3b68328140f2265bf3690/src/lunaria_windows.c).
+
+### Pinned HarfBuzz build recipe confirmed from upstream
+
+The pinned upstream source at `79194ef09802ee56ffd3b68328140f2265bf3690` sets HarfBuzz to **10.2.0** in `scripts/fetch-macos-deps.sh`. It downloads the official `harfbuzz/harfbuzz` tag archive, builds the shared `harfbuzz` target with CMake, and copies the upstream `COPYING` file. The macOS bundler then copies the dynamically loaded library into its bundle's `lib` directory.
+
+The Windows distribution path is materially different:
+
+- `scripts/make-dist.sh` copies `runtime/*.dll` into `stage/runtime/`.
+- `scripts/bundle-windows.py` follows PE import tables for the executable and staged runtime DLLs.
+- The HarfBuzz adapter calls the Windows OS bridge with the bare names `libharfbuzz-0.dll` and `harfbuzz.dll`; this dynamic lookup is not represented as a normal PE import.
+- Therefore the Windows import-closure bundler cannot be assumed to include HarfBuzz. The Windows package needs a deliberate staging rule for the actual DLL name selected by the adapter, plus a validation check and its licence.
+
+This is stronger evidence for a packaging gap, but the correct Windows DLL build and dependency closure still need to be verified. The macOS CMake recipe is a useful pinned-version reference, **not** a Windows build recipe.
+
+### Font-source status
+
+The distribution script expects font assets from the sibling `luna-shell/skins/fonts/` checkout. The exact font source repository and the licence/redistribution terms for both Luna symbol fonts have not yet been verified. Do not substitute arbitrary Windows system fonts or ship the symbol fonts until provenance and licences are confirmed. Inter can be sourced independently from its canonical upstream project, but the exact font version and OFL notice must travel with the redistributed font.
+
+### Next concrete implementation gate
+
+Before changing the runtime package, obtain and verify a trusted x86_64 Windows HarfBuzz 10.2.0 build (or reproducibly build that exact tag), inspect its PE dependencies, and confirm the DLL can be resolved from the staged executable directory. Then add the DLL, its licence, and a manifest/check to a reproducible Windows package build. In parallel, resolve the licensed font source. Only after that package is produced should the Smoke Test APK be rerun.
+
