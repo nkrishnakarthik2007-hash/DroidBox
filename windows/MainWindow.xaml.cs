@@ -11,6 +11,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _inspection;
     private string? _selectedApkPath;
     private string? _runtimePath;
+    private Process? _activeRuntimeProcess;
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "settings.json");
     public MainWindow() { InitializeComponent(); LoadRuntimeSettings(); }
     private void SelectButton_Click(object sender, RoutedEventArgs e)
@@ -35,7 +36,7 @@ public partial class MainWindow : Window
         _inspection?.Dispose();
         _inspection = new CancellationTokenSource();
         _selectedApkPath = info.FullName;
-        RunAppButton.IsEnabled = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath);
+        UpdateRunButton();
         FileNameText.Text = info.Name;
         FileInfoText.Text = $"{FormatSize(info.Length)} • Selected locally";
         InspectStatus.Text = "Inspecting package metadata (no APK code is executed)…";
@@ -116,15 +117,10 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog { Title = "Select Stubuika or Lunaria runtime", Filter = "Runtime executable (*.exe)|*.exe", CheckFileExists = true };
         if (dialog.ShowDialog() != true) return;
-        var name = Path.GetFileName(dialog.FileName);
-        if (!name.Equals("stubuika.exe", StringComparison.OrdinalIgnoreCase) && !name.Equals("lunaria.exe", StringComparison.OrdinalIgnoreCase))
-        {
-            MessageBox.Show("For this experimental bridge, choose stubuika.exe or lunaria.exe.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
         _runtimePath = dialog.FileName;
-        RuntimePathText.Text = _runtimePath;
-        RunAppButton.IsEnabled = !string.IsNullOrWhiteSpace(_selectedApkPath);
+        var version = FileVersionInfo.GetVersionInfo(_runtimePath).FileVersion;
+        RuntimePathText.Text = string.IsNullOrWhiteSpace(version) ? Path.GetFileName(_runtimePath) : $"{Path.GetFileName(_runtimePath)} • {version}";
+        UpdateRunButton();
         SaveRuntimeSettings();
     }
     private void RunAppButton_Click(object sender, RoutedEventArgs e)
@@ -148,15 +144,68 @@ public partial class MainWindow : Window
                 WorkingDirectory = Path.GetDirectoryName(_runtimePath) ?? AppContext.BaseDirectory,
                 UseShellExecute = false
             };
+            if (_activeRuntimeProcess is { HasExited: false })
+            {
+                MessageBox.Show("A runtime session is already running. Stop it before launching another APK.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
             psi.ArgumentList.Add(_selectedApkPath);
-            Process.Start(psi);
-            InspectStatus.Text = "Runtime process launched. App compatibility is not guaranteed.";
+            var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            process.Exited += (_, _) => Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(_activeRuntimeProcess, process)) return;
+                var exitCode = process.ExitCode;
+                _activeRuntimeProcess = null;
+                StopRuntimeButton.IsEnabled = false;
+                UpdateRunButton();
+                InspectStatus.Text = $"Runtime process exited (code {exitCode}). Check runtime diagnostics if the app did not appear.";
+                process.Dispose();
+            });
+            if (!process.Start())
+            {
+                process.Dispose();
+                InspectStatus.Text = "Windows could not start the runtime process.";
+                return;
+            }
+            _activeRuntimeProcess = process;
+            StopRuntimeButton.IsEnabled = true;
+            RunAppButton.IsEnabled = false;
+            InspectStatus.Text = $"Runtime process started (PID {process.Id}). This does not confirm successful APK rendering.";
         }
         catch (Exception ex)
         {
             InspectStatus.Text = "Runtime launch failed.";
             MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+    private void StopRuntimeButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_activeRuntimeProcess is { HasExited: false } process)
+            {
+                process.Kill(entireProcessTree: true);
+                InspectStatus.Text = "Stop requested for the runtime process.";
+            }
+            else
+            {
+                StopRuntimeButton.IsEnabled = false;
+                UpdateRunButton();
+            }
+        }
+        catch (Exception ex)
+        {
+            InspectStatus.Text = "Could not stop runtime process.";
+            MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+    private void UpdateRunButton()
+    {
+        RunAppButton.IsEnabled = !string.IsNullOrWhiteSpace(_selectedApkPath)
+            && File.Exists(_selectedApkPath)
+            && !string.IsNullOrWhiteSpace(_runtimePath)
+            && File.Exists(_runtimePath)
+            && !(_activeRuntimeProcess is { HasExited: false });
     }
     private void LoadRuntimeSettings()
     {
@@ -165,7 +214,8 @@ public partial class MainWindow : Window
             if (!File.Exists(SettingsPath)) { RuntimePathText.Text = "No runtime selected"; return; }
             var settings = JsonSerializer.Deserialize<RuntimeSettings>(File.ReadAllText(SettingsPath));
             _runtimePath = settings?.RuntimePath;
-            RuntimePathText.Text = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath) ? _runtimePath : "Runtime not found — select it again";
+            RuntimePathText.Text = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath) ? Path.GetFileName(_runtimePath) : "Runtime not found — select it again";
+            UpdateRunButton();
         }
         catch { RuntimePathText.Text = "Runtime settings unavailable"; }
     }
