@@ -25,7 +25,7 @@ jobs:
           $hash = (Get-FileHash harfbuzz-win64-10.2.0.zip -Algorithm SHA256).Hash
           "HarfBuzz 10.2.0 Windows x64 SHA256: $hash"
           Expand-Archive harfbuzz-win64-10.2.0.zip -DestinationPath harfbuzz -Force
-          New-Item -ItemType Directory -Force -Path package/runtime, package/fonts, package/licenses | Out-Null
+          New-Item -ItemType Directory -Force -Path package, package/fonts, package/licenses | Out-Null
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/harfbuzz/harfbuzz/10.2.0/COPYING" -OutFile package/licenses/HarfBuzz-COPYING
           if ((Get-Item package/licenses/HarfBuzz-COPYING).Length -lt 1000) {
             throw "HarfBuzz licence file was not retrieved."
@@ -55,13 +55,13 @@ jobs:
           # Keep the complete upstream DLL set together. HarfBuzz's release bundle
           # explicitly includes its runtime dependencies; pruning by static imports
           # could miss libraries loaded dynamically by optional components.
-          Copy-Item $dlls.FullName package/runtime/
+          Copy-Item $dlls.FullName package/
           $required = @("libharfbuzz-0.dll")
           foreach ($name in $required) {
-            if (-not (Test-Path "package/runtime/$name")) { throw "Missing runtime dependency: $name" }
+            if (-not (Test-Path "package/$name")) { throw "Missing runtime dependency: $name" }
           }
-          Get-ChildItem package/runtime -Filter *.dll | Select-Object Name, Length | Format-Table -AutoSize
-          "Staged $($dlls.Count) DLLs."
+          Get-ChildItem package -Filter *.dll | Select-Object Name, Length | Format-Table -AutoSize
+          "Staged $($dlls.Count) DLLs beside the runtime executable (application directory lookup)."
 
       - name: Stage licensed Inter font fallback
         shell: pwsh
