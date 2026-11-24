@@ -106,11 +106,18 @@ jobs:
             public static extern IntPtr LoadLibrary(string path);
             [DllImport("kernel32", CharSet=CharSet.Ansi, ExactSpelling=true, SetLastError=true)]
             public static extern IntPtr GetProcAddress(IntPtr module, string name);
+            [DllImport("kernel32", CharSet=CharSet.Unicode, SetLastError=true)]
+            public static extern bool SetDllDirectory(string path);
             [DllImport("kernel32", SetLastError=true)]
             public static extern bool FreeLibrary(IntPtr module);
           }
           "@
           $hbPath = Join-Path $root "libharfbuzz-0.dll"
+          # The probe process is PowerShell, not stubuika.exe. Set the runtime
+          # directory as the DLL search directory to emulate the runtime app dir.
+          if (-not [NativeLibraryProbe]::SetDllDirectory($root)) {
+            throw "Could not set the runtime DLL search directory."
+          }
           $module = [NativeLibraryProbe]::LoadLibrary($hbPath)
           if ($module -eq [IntPtr]::Zero) {
             throw "Windows could not load HarfBuzz with its adjacent DLL dependencies. Win32 error: $([Runtime.InteropServices.Marshal]::GetLastWin32Error())"
@@ -121,6 +128,7 @@ jobs:
             "Windows LoadLibrary/GetProcAddress test passed for HarfBuzz."
           } finally {
             [void][NativeLibraryProbe]::FreeLibrary($module)
+            [void][NativeLibraryProbe]::SetDllDirectory($null)
           }
           "Font files: $((Get-ChildItem $fonts -File).Count)"
 
