@@ -1,0 +1,20 @@
+<Window x:Class="DroidBox.Windows.SplashWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Width="430" Height="290" WindowStyle="None" ResizeMode="NoResize"
+ WindowStartupLocation="CenterScreen" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False">
+ <Border Background="#101629" BorderBrush="#557C6BFF" BorderThickness="1" CornerRadius="26" Padding="28">
+  <Grid>
+   <Ellipse Width="220" Height="220" Fill="#5B5B4AFF" HorizontalAlignment="Center" VerticalAlignment="Center"><Ellipse.Effect><BlurEffect Radius="75"/></Ellipse.Effect></Ellipse>
+   <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+    <Border Width="76" Height="76" CornerRadius="24" Background="#735BFF" BorderBrush="#B4A8FF" BorderThickness="1" HorizontalAlignment="Center">
+     <Grid><TextBlock Text="N" FontFamily="Segoe UI Black" FontSize="48" FontWeight="Black" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/><Ellipse Width="9" Height="9" Fill="#73F0D2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0"/></Grid>
+    </Border>
+    <TextBlock Text="DroidBox" FontSize="25" FontWeight="Bold" Foreground="#F7F5FF" HorizontalAlignment="Center" Margin="0,17,0,0"/>
+    <TextBlock Text="ANDROID, MEET WINDOWS." FontSize="9" FontWeight="Bold" Foreground="#A9A1FF" CharacterSpacing="170" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+    <ProgressBar Width="180" Height="3" IsIndeterminate="True" Foreground="#8A76FF" Background="#34334C" BorderThickness="0" Margin="0,24,0,0"/>
+    <TextBlock Text="Preparing your workspace…" FontSize="10" Foreground="#929DB8" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+   </StackPanel>
+  </Grid>
+ </Border>
+</Window>
