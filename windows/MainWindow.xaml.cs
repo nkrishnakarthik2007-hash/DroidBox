@@ -211,11 +211,16 @@ public partial class MainWindow : Window
                 if (line is null) return;
                 try
                 {
+                    // Keep diagnostic logs bounded even if a runtime emits an unusually large line.
+                    if (line.Length > 8_000) line = line[..8_000] + " [line truncated]";
                     lock (logLock)
                     {
                         var currentSize = File.Exists(logPath) ? new FileInfo(logPath).Length : 0;
                         if (currentSize >= 2 * 1024 * 1024) return;
-                        File.AppendAllText(logPath, $"[{DateTime.Now:O}] [{source}] {line}{Environment.NewLine}");
+                        var entry = $"[{DateTime.Now:O}] [{source}] {line}{Environment.NewLine}";
+                        var remaining = (2 * 1024 * 1024) - currentSize;
+                        if (entry.Length > remaining) entry = entry[..Math.Max(0, (int)remaining)];
+                        if (entry.Length > 0) File.AppendAllText(logPath, entry);
                     }
                 }
                 catch { /* Logging must never prevent the runtime from running. */ }
