@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using Velopack;
 using Velopack.Sources;
 namespace DroidBox.Windows;
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)));
         LoadRuntimeSettings();
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
     }
