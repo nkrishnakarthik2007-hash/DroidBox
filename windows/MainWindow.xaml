@@ -27,6 +27,7 @@
           <TextBlock Text="Experimental external engine" Foreground="#A4A4B3" TextWrapping="Wrap" Margin="0,8,0,0"/>
           <Button Content="Select Stubuika / Lunaria" Click="SelectRuntimeButton_Click" Margin="0,14,0,0"/>
           <Button Content="Download Stubuika runtime" Click="DownloadRuntimeButton_Click" Margin="0,8,0,0"/>
+          <Button Content="Get DroidBox test APK" Click="DownloadTestApkButton_Click" Margin="0,8,0,0"/>
           <TextBlock x:Name="RuntimePathText" Text="No runtime selected" Foreground="#777783" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
           <Button Content="Check runtime" Click="CheckRuntimeButton_Click" IsEnabled="True" Margin="0,16,0,0"/>
           <TextBlock x:Name="RuntimeDiagnosticsText" Text="Runtime checks have not been run." Foreground="#A4A4B3" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
