@@ -61,7 +61,9 @@ jobs:
         shell: pwsh
         run: |
           dotnet tool install --global vpk --version 1.2.161
-          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          $toolPath = Join-Path $env:USERPROFILE ".dotnet\tools"
+          Add-Content -Path $env:GITHUB_PATH -Value $toolPath
+          $env:PATH += ";$toolPath"
           vpk --version
 
       - name: Package installable and updateable DroidBox
