@@ -68,8 +68,11 @@ public partial class MainWindow : Window
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
-            psi.ArgumentList.Add("-m");
-            psi.ArgumentList.Add("scripts.apk_inspector");
+            // Embedded Python runs in isolated mode; explicitly add the package root
+            // so the bundled "scripts" package is importable regardless of the launch folder.
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add("import runpy,sys; sys.path.insert(0, sys.argv.pop(1)); runpy.run_module('scripts.apk_inspector', run_name='__main__')");
+            psi.ArgumentList.Add(root);
             psi.ArgumentList.Add("--skip-hash");
             psi.ArgumentList.Add(apkPath);
             activeProcess = new Process { StartInfo = psi };
