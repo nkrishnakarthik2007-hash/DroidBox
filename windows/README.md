@@ -22,6 +22,7 @@ Settings, diagnostic logs and other user-managed data must remain outside the re
 
 ## Current capabilities
 
+- Modern glass-style Windows 11 interface with NKK branding and a short animated startup splash.
 - Select or drag an APK into DroidBox.
 - Inspect APK metadata without executing APK code.
 - Select a Stubuika or Lunaria Windows executable; the path is saved in local settings.
