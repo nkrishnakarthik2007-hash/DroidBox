@@ -64,7 +64,7 @@ jobs:
           $toolPath = Join-Path $env:USERPROFILE ".dotnet\tools"
           Add-Content -Path $env:GITHUB_PATH -Value $toolPath
           $env:PATH += ";$toolPath"
-          vpk --version
+          vpk --help
 
       - name: Package installable and updateable DroidBox
         shell: pwsh
