@@ -13,7 +13,7 @@ jobs:
   inspect:
     runs-on: windows-latest
     steps:
-      - name: Download pinned HarfBuzz Windows x64 release
+      - name: Download pinned HarfBuzz Windows x64 release and licence
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -22,16 +22,21 @@ jobs:
           if ((Get-Item harfbuzz-win64-10.2.0.zip).Length -lt 1000000) {
             throw "HarfBuzz archive is unexpectedly small."
           }
-          Get-FileHash harfbuzz-win64-10.2.0.zip -Algorithm SHA256 | Format-List
+          $hash = (Get-FileHash harfbuzz-win64-10.2.0.zip -Algorithm SHA256).Hash
+          "HarfBuzz 10.2.0 Windows x64 SHA256: $hash"
           Expand-Archive harfbuzz-win64-10.2.0.zip -DestinationPath harfbuzz -Force
+          New-Item -ItemType Directory -Force -Path package/runtime, package/fonts, package/licenses | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/harfbuzz/harfbuzz/10.2.0/COPYING" -OutFile package/licenses/HarfBuzz-COPYING
+          if ((Get-Item package/licenses/HarfBuzz-COPYING).Length -lt 1000) {
+            throw "HarfBuzz licence file was not retrieved."
+          }
 
-      - name: Inspect DLLs and architecture
+      - name: Validate HarfBuzz PE and stage complete DLL bundle
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           $dlls = Get-ChildItem harfbuzz -Recurse -Filter *.dll
           if (-not $dlls) { throw "No DLLs found in official HarfBuzz archive." }
-          $dlls | Select-Object FullName, Length | Format-Table -AutoSize
           $hb = $dlls | Where-Object { $_.Name -eq "libharfbuzz-0.dll" } | Select-Object -First 1
           if (-not $hb) { throw "Expected libharfbuzz-0.dll was not found." }
           $bytes = [IO.File]::ReadAllBytes($hb.FullName)
@@ -47,15 +52,53 @@ jobs:
             throw ("Expected x64 PE machine 0x8664, got 0x{0:X4}" -f $machine)
           }
           "Validated x64 HarfBuzz DLL: $($hb.FullName)"
-          $license = Get-ChildItem harfbuzz -Recurse -File | Where-Object { $_.Name -match '^(COPYING|LICENSE)(\\..*)?$' }
-          if (-not $license) { throw "No HarfBuzz licence notice found in release archive." }
-          $license | Select-Object FullName, Length | Format-Table -AutoSize
+          # Keep the complete upstream DLL set together. HarfBuzz's release bundle
+          # explicitly includes its runtime dependencies; pruning by static imports
+          # could miss libraries loaded dynamically by optional components.
+          Copy-Item $dlls.FullName package/runtime/
+          $required = @("libharfbuzz-0.dll")
+          foreach ($name in $required) {
+            if (-not (Test-Path "package/runtime/$name")) { throw "Missing runtime dependency: $name" }
+          }
+          Get-ChildItem package/runtime -Filter *.dll | Select-Object Name, Length | Format-Table -AutoSize
+          "Staged $($dlls.Count) DLLs."
 
-      - name: Upload inspection report
+      - name: Stage licensed Inter font fallback
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          # The font binary is pinned to the Luna UI source revision already
+          # inspected for this runtime. The separate upstream Inter OFL notice
+          # accompanies it in the package.
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Berry-OS/luna-ui/master/fonts/Inter-Regular.ttf" -OutFile package/fonts/Inter-Regular.ttf
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/rsms/inter/master/LICENSE.txt" -OutFile package/licenses/Inter-OFL.txt
+          if ((Get-Item package/fonts/Inter-Regular.ttf).Length -lt 100000) {
+            throw "Inter font download is unexpectedly small."
+          }
+          Copy-Item package/fonts/Inter-Regular.ttf package/fonts/Inter-Bold.ttf
+          "Staged Inter regular and compatibility bold fallback."
+
+      - name: Create dependency package and manifest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $manifest = @(
+            "DroidBox Stubuika Windows dependency experiment",
+            "HarfBuzz: 10.2.0 official Windows x64 release bundle",
+            "HarfBuzz archive SHA256: $((Get-FileHash harfbuzz-win64-10.2.0.zip -Algorithm SHA256).Hash)",
+            "HarfBuzz licence: licenses/HarfBuzz-COPYING",
+            "Inter font source: Berry-OS/luna-ui fonts/Inter-Regular.ttf",
+            "Inter licence: licenses/Inter-OFL.txt",
+            "Inter-Bold.ttf is a copy of Inter-Regular.ttf as a temporary fallback; true bold styling is not supplied.",
+            "LunaSymbols fonts are intentionally omitted pending font-specific licence verification.",
+            "This package is an experiment, not a verified runtime fix."
+          )
+          $manifest | Set-Content package/DEPENDENCIES.txt
+          Compress-Archive -Path package/* -DestinationPath DroidBox-Stubuika-Windows-Dependencies.zip -Force
+
+      - name: Upload dependency experiment
         uses: actions/upload-artifact@v4
         with:
-          name: stubuika-windows-dependency-inspection
-          path: |
-            harfbuzz
-            harfbuzz-win64-10.2.0.zip
+          name: droidbox-stubuika-windows-dependencies
+          path: DroidBox-Stubuika-Windows-Dependencies.zip
           retention-days: 14
