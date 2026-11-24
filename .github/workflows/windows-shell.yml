@@ -48,8 +48,9 @@ jobs:
           & $pythonExe --version
           if ($LASTEXITCODE -ne 0) { throw "Bundled Python failed to start." }
           $pythonExe = (Resolve-Path $pythonExe).Path
-          $probe = Start-Process -FilePath $pythonExe -ArgumentList "-m scripts.apk_inspector --help" -WorkingDirectory $rootFull -Wait -PassThru -NoNewWindow
-          if ($probe.ExitCode -ne 0) { throw "Bundled APK inspector failed to load (exit code $($probe.ExitCode))." }
+          $probeCode = "import runpy,sys; sys.path.insert(0, sys.argv.pop(1)); runpy.run_module('scripts.apk_inspector', run_name='__main__')"
+          & $pythonExe -c $probeCode $rootFull --help
+          if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed to load (exit code $LASTEXITCODE)." }
       - name: Package preview
         if: github.event_name != 'pull_request'
         run: Compress-Archive -Path artifacts/DroidBox-win-x64/* -DestinationPath artifacts/DroidBox-win-x64-preview.zip
