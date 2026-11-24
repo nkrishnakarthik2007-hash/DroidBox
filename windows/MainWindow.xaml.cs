@@ -55,7 +55,11 @@ public partial class MainWindow : Window
         }
         try
         {
-            var python = Environment.GetEnvironmentVariable("DROIDBOX_PYTHON") ?? "python";
+            var bundledPython = Path.Combine(AppContext.BaseDirectory, "python", "python.exe");
+            var configuredPython = Environment.GetEnvironmentVariable("DROIDBOX_PYTHON");
+            var python = !string.IsNullOrWhiteSpace(configuredPython) ? configuredPython
+                : File.Exists(bundledPython) ? bundledPython
+                : "python";
             var psi = new ProcessStartInfo(python)
             {
                 WorkingDirectory = root,
