@@ -19,3 +19,18 @@ jobs:
           dotnet-version: "8.0.x"
       - name: Build WPF shell
         run: dotnet build windows/DroidBox.Windows.csproj --configuration Release
+      - name: Publish self-contained Windows x64 preview
+        if: github.event_name != 'pull_request'
+        run: dotnet publish windows/DroidBox.Windows.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false --output artifacts/DroidBox-win-x64
+      - name: Package preview
+        if: github.event_name != 'pull_request'
+        run: Compress-Archive -Path artifacts/DroidBox-win-x64/* -DestinationPath artifacts/DroidBox-win-x64-preview.zip
+        shell: pwsh
+      - name: Upload Windows preview
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DroidBox-Windows-x64-preview
+          path: artifacts/DroidBox-win-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 14
