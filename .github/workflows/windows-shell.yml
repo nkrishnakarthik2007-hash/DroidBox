@@ -22,6 +22,26 @@ jobs:
       - name: Publish self-contained Windows x64 preview
         if: github.event_name != 'pull_request'
         run: dotnet publish windows/DroidBox.Windows.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false --output artifacts/DroidBox-win-x64
+      - name: Bundle Python APK inspector
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = "artifacts/DroidBox-win-x64"
+          $pythonZip = "python-3.12.10-embed-amd64.zip"
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.10/$pythonZip" -OutFile $pythonZip
+          $pythonDir = Join-Path $root "python"
+          New-Item -ItemType Directory -Force -Path $pythonDir | Out-Null
+          Expand-Archive $pythonZip -DestinationPath $pythonDir -Force
+          Copy-Item "scripts" (Join-Path $root "scripts") -Recurse -Force
+          $pth = Join-Path $pythonDir "python312._pth"
+          if (-not (Test-Path $pth)) { throw "Embedded Python path configuration was not found." }
+          $lines = Get-Content $pth
+          if ($lines -notcontains ".") { Add-Content -Path $pth -Value "." }
+          & (Join-Path $pythonDir "python.exe") --version
+          if ($LASTEXITCODE -ne 0) { throw "Bundled Python failed to start." }
+          & (Join-Path $pythonDir "python.exe") -m scripts.apk_inspector --help
+          if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed to load." }
       - name: Package preview
         if: github.event_name != 'pull_request'
         run: Compress-Archive -Path artifacts/DroidBox-win-x64/* -DestinationPath artifacts/DroidBox-win-x64-preview.zip
