@@ -33,15 +33,27 @@ jobs:
           $pythonDir = Join-Path $root "python"
           New-Item -ItemType Directory -Force -Path $pythonDir | Out-Null
           Expand-Archive $pythonZip -DestinationPath $pythonDir -Force
-          Copy-Item "scripts" (Join-Path $root "scripts") -Recurse -Force
+          $scriptsDir = Join-Path $root "scripts"
+          New-Item -ItemType Directory -Force -Path $scriptsDir | Out-Null
+          Copy-Item "scripts/*" $scriptsDir -Recurse -Force
+          if (-not (Test-Path (Join-Path $scriptsDir "apk_inspector.py"))) {
+            throw "APK inspector source was not copied into the preview."
+          }
           $pth = Join-Path $pythonDir "python312._pth"
           if (-not (Test-Path $pth)) { throw "Embedded Python path configuration was not found." }
+          $rootFull = (Resolve-Path $root).Path
           $lines = Get-Content $pth
-          if ($lines -notcontains ".") { Add-Content -Path $pth -Value "." }
-          & (Join-Path $pythonDir "python.exe") --version
+          if ($lines -notcontains $rootFull) { Add-Content -Path $pth -Value $rootFull }
+          $pythonExe = Join-Path $pythonDir "python.exe"
+          & $pythonExe --version
           if ($LASTEXITCODE -ne 0) { throw "Bundled Python failed to start." }
-          & (Join-Path $pythonDir "python.exe") -m scripts.apk_inspector --help
-          if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed to load." }
+          Push-Location $rootFull
+          try {
+            & $pythonExe -m scripts.apk_inspector --help
+            if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed to load." }
+          } finally {
+            Pop-Location
+          }
       - name: Package preview
         if: github.event_name != 'pull_request'
         run: Compress-Archive -Path artifacts/DroidBox-win-x64/* -DestinationPath artifacts/DroidBox-win-x64-preview.zip
