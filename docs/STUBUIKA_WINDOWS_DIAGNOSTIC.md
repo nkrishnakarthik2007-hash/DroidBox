@@ -150,3 +150,23 @@ The Inter upstream repository provides a separate `LICENSE.txt`; the Inter font 
 
 **Decision:** use the official HarfBuzz 10.2.0 x64 release as the first candidate to inspect, not as an already approved binary dependency. Use Inter only after pinning its source revision and carrying its OFL notice. Do not redistribute the LunaSymbols fonts until their upstream font-specific terms and required attribution are confirmed. The missing bold face can be handled by a documented fallback only after verifying that the renderer accepts the same regular font for both regular and bold roles.
 
+### Windows dependency package experiment — 2026-11-24
+
+A GitHub Actions Windows runner successfully downloaded and unpacked the official Stubuika v2026.11.08 Windows x64 archive and the official HarfBuzz 10.2.0 Windows x64 bundle.
+
+Verified from the generated package artifact:
+
+- `stubuika.exe` is present.
+- `libharfbuzz-0.dll` and the other HarfBuzz DLLs are placed beside `stubuika.exe`, not in a nested runtime folder.
+- The package contains 32 DLLs in total; a PE-header inspection confirmed all 32 are x64 (`0x8664`).
+- `fonts/Inter-Regular.ttf` is included, with a temporary identical `Inter-Bold.ttf` fallback.
+- HarfBuzz's `COPYING` and Inter's OFL licence notice are included.
+- LunaSymbols are intentionally not bundled because their font-specific licence/provenance is not yet confirmed.
+
+The HarfBuzz binary archive SHA-256 observed in CI was:
+`0B8FE8A8A7C88135133BD2D458FEEBEAEDD7C975BFEE9576CDFD2F6C431D1268`.
+
+The complete experimental runtime package was successfully generated as GitHub Actions artifact `droidbox-stubuika-windows-x64-experimental` (run `45324214504`, artifact ID `14888129034`). The package itself was downloaded and inspected: it contains 50 entries inside the runtime ZIP, including the expected executable, DLL set, fonts, and notices.
+
+**Important validation boundary:** this package-generation success does not prove that HarfBuzz can be loaded by the runtime process, that the exact text-shaping exception is fixed, or that the Android smoke-test UI renders. The package workflow now adds a Windows `LoadLibrary` + `GetProcAddress(hb_version_string)` probe to validate the DLL and its dependent DLLs before producing the next artifact. The actual Android UI-rendering gate still requires running the smoke APK under Stubuika and observing a non-black, interactive window on a Windows desktop.
+
