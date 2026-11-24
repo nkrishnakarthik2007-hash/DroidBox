@@ -49,4 +49,4 @@ Do not describe the runtime as Windows-compatible based only on a successful CI 
 
 ## Current status
 
-The APK build workflow completed successfully on 2026-11-24. The artifact was uploaded successfully. Native execution on Windows has not yet been tested.
+The APK build workflow completed successfully on 2026-11-24 and the artifact was uploaded. A Windows launch attempt using Stubuika created a window, but it was completely black. Logs reported `[luna-ui] warning: no regular font available` and `Text shaping unavailable`. Therefore the visible-UI check **failed**; input, persistence, and private-file checks remain **not tested**. See [Stubuika Windows diagnostic](STUBUIKA_WINDOWS_DIAGNOSTIC.md). A window appearing is not proof of successful Android app execution.
