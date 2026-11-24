@@ -1,40 +1,50 @@
-# DroidBox Windows shell prototype
+# DroidBox Windows application
 
-This is the early WPF shell for **DroidBox by NKK**. The Windows preview is published as a self-contained x64 package: it includes the .NET runtime and a bundled Python runtime for APK metadata inspection.
+DroidBox by NKK is a Windows WPF application. The installable release is packaged with **Velopack** so installed copies can receive updates from this public GitHub repository.
+
+## Automatic updates
+
+When code is pushed to the `main` branch in `windows/**` or `scripts/**`, GitHub Actions:
+
+1. Builds the WPF application.
+2. Publishes a self-contained Windows x64 application.
+3. Bundles the embedded Python APK inspector.
+4. Packages a Velopack installer and update feed.
+5. Publishes a versioned GitHub Release.
+
+An installed DroidBox checks GitHub Releases at startup and also has a **Check for updates** button. When an update is available, the user can download it and restart DroidBox to apply it.
+
+**Important:** Existing portable ZIP previews are not Velopack installations and cannot self-update. Install the generated `*-Setup.exe` once to enable in-app updates. Do not delete the user's `%LOCALAPPDATA%\\DroidBox` folder when replacing or troubleshooting the application.
+
+## User data
+
+Settings, diagnostic logs and other user-managed data must remain outside the replaceable application install directory. Current settings are stored under `%LOCALAPPDATA%\\DroidBox` and runtime logs under `%LOCALAPPDATA%\\DroidBox\\Logs`. APK files selected from elsewhere remain in their original locations; DroidBox does not currently maintain a full APK library or Android per-app data store.
 
 ## Current capabilities
+
 - Select or drag an APK into DroidBox.
 - Inspect APK metadata without executing APK code.
-- Select a Stubuika or Lunaria Windows executable; the path is saved in your local settings.
-- Run Stubuika host diagnostics from inside DroidBox.
-- Launch the selected APK in the external runtime after a clear security warning.
+- Select a Stubuika or Lunaria Windows executable; the path is saved in local settings.
+- Run runtime diagnostics.
+- Launch a selected APK after a security warning.
 - Stop the launched runtime process tree.
-- Capture runtime stdout/stderr in a bounded diagnostic log under `%LOCALAPPDATA%\\DroidBox\\Logs`.
-
-## Get a preview build
-Open the [Windows shell build workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/windows-shell.yml), select the latest successful run, and download the **DroidBox-Windows-x64-preview** artifact. Extract the ZIP and run `DroidBox.Windows.exe`.
-
-The preview is not yet a signed installer. Windows SmartScreen may show an unfamiliar-app warning because this is an unsigned development build.
+- Capture runtime stdout/stderr in a bounded diagnostic log.
 
 ## Experimental runtime setup
-1. Click **Download Stubuika runtime** to open the upstream release page.
-2. Download the Windows x86_64 ZIP and extract it to a folder.
-3. In DroidBox, click **Select Stubuika / Lunaria** and choose `stubuika.exe` (or `lunaria.exe`).
-4. Click **Check runtime**. A successful diagnostics report confirms that the runtime CLI can start; it does not prove that Android apps render.
-5. Select a trusted APK, then click **Run selected APK**.
 
-The [DroidBox smoke-test APK workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/build-smoke-test-apk.yml) builds our small test application. Download its `droidbox-smoke-test-apk` artifact from a successful run.
+The current preview still requires a separate runtime executable to be selected manually. Runtime auto-download and silent setup will be added only after the selected engine passes graphics, fonts, and real APK rendering tests. The current Stubuika test log showed that its guest window was created, but native EGL display initialization and text shaping failed, so it is not yet ready to be bundled as the default engine.
 
-Stubuika is experimental and compatibility is app-specific. Native Windows display/audio and actual APK rendering still need verification on the target laptop. The launch bridge does not sandbox APK code; APKs may access files, network, and other resources available to your Windows account. Only run APKs you trust.
+The [DroidBox smoke-test APK workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/build-smoke-test-apk.yml) builds our small test application.
 
-Runtime releases: https://github.com/flessan/stubuika/releases
+The runtime bridge does not sandbox APK code; APKs may access files, network, and other resources available to your Windows account. Only run APKs you trust.
 
-## Build from source
-Requires Windows and the .NET 8 SDK. Python is optional for source builds because the inspector can use a system Python installation.
+## Development build
+
+Requires Windows and the .NET 8 SDK.
 
 ```powershell
 cd windows
 dotnet run
 ```
 
-The preview ZIP is portable but is not yet a polished installer. Runtime integration, APK isolation, independent app windows, and compatibility are still under development.
+A development run is not a Velopack installation, so update checks are intentionally unavailable when running from the source tree.
