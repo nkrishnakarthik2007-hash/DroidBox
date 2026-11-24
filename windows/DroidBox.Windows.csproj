@@ -8,5 +8,10 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>DroidBox.Windows.App</StartupObject>
   </PropertyGroup>
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
 </Project>
 
