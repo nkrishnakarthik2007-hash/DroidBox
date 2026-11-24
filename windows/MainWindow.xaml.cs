@@ -55,20 +55,23 @@ public partial class MainWindow : Window
             }
 
             var version = update.TargetFullRelease.Version.ToString();
-            var answer = MessageBox.Show(
-                $"DroidBox version {version} is available. Download and restart now? Your APKs, settings and logs are stored separately from application files.",
-                "DroidBox update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
-            if (answer != MessageBoxResult.Yes)
-            {
-                UpdateStatusText.Text = $"Update {version} is available. You can install it later.";
-                return;
-            }
-
-            UpdateStatusText.Text = "Downloading update… 0%";
+            // Download in the background automatically; only ask before restarting the user's app.
+            UpdateStatusText.Text = $"DroidBox {version} found. Downloading update… 0%";
             await _updateManager.DownloadUpdatesAsync(update, percent =>
                 Dispatcher.Invoke(() => UpdateStatusText.Text = $"Downloading update… {percent}%"));
-            UpdateStatusText.Text = "Update downloaded. Restarting DroidBox…";
-            _updateManager.ApplyUpdatesAndRestart(update.TargetFullRelease);
+
+            var answer = MessageBox.Show(
+                $"DroidBox {version} has been downloaded. Restart now to finish updating? Your APKs, settings and logs are stored separately from application files.",
+                "DroidBox update ready", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (answer == MessageBoxResult.Yes)
+            {
+                UpdateStatusText.Text = "Applying update and restarting DroidBox…";
+                _updateManager.ApplyUpdatesAndRestart(update.TargetFullRelease);
+            }
+            else
+            {
+                UpdateStatusText.Text = $"Update {version} is ready. Restart DroidBox when convenient to apply it.";
+            }
         }
         catch (Exception ex)
         {
