@@ -3,7 +3,11 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <Grid>
       <StackPanel><TextBlock Text="DroidBox" FontSize="28" FontWeight="Bold"/><TextBlock Text="Android apps. Windows freedom." Foreground="#A4A4B3" Margin="0,3,0,0"/></StackPanel>
-      <Border HorizontalAlignment="Right" Background="#252530" CornerRadius="16" Padding="12,7"><TextBlock Text="PREVIEW BUILD  •  EXPERIMENTAL RUNTIME BRIDGE" FontSize="11" Foreground="#B9ACFF" FontWeight="SemiBold"/></Border>
+      <StackPanel HorizontalAlignment="Right" Width="270">
+        <Border Background="#252530" CornerRadius="16" Padding="12,7"><TextBlock Text="DROIDBOX  •  AUTO UPDATES" FontSize="11" Foreground="#B9ACFF" FontWeight="SemiBold" HorizontalAlignment="Center"/></Border>
+        <Button Content="Check for updates" Click="CheckForUpdatesButton_Click" Margin="0,8,0,0"/>
+        <TextBlock x:Name="UpdateStatusText" Text="Update checks start automatically when installed." Foreground="#A4A4B3" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0" TextAlignment="Right"/>
+      </StackPanel>
     </Grid>
     <Grid Grid.Row="1" Margin="0,28,0,20">
       <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
