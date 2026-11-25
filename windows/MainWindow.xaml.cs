@@ -2,6 +2,7 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
@@ -17,6 +18,28 @@ public partial class MainWindow : Window
     private Process? _activeRuntimeProcess;
     private UpdateManager? _updateManager;
     private bool _updateCheckRunning;
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        try
+        {
+            var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            int dark = 1, mica = 2, rounded = 2;
+            _ = DwmSetWindowAttribute(handle, 20, ref dark, sizeof(int));
+            _ = DwmSetWindowAttribute(handle, 38, ref mica, sizeof(int));
+            _ = DwmSetWindowAttribute(handle, 33, ref rounded, sizeof(int));
+        }
+        catch { /* Native window effects are optional; keep the app usable on older Windows builds. */ }
+    }
+    private void MinimizeWindow_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void MaximizeWindow_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "settings.json");
     public MainWindow()
     {
