@@ -57,6 +57,46 @@ jobs:
           & $pythonExe -c $probeCode $rootFull --help
           if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed its startup check." }
 
+
+      - name: Bundle the Stubuika Windows x64 runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $uri = "https://github.com/flessan/stubuika/releases/download/stubuika-v2026.11.08/stubuika-2026-11-08-windows-x86_64.zip"
+          Invoke-WebRequest -Uri $uri -OutFile stubuika.zip
+          if ((Get-Item stubuika.zip).Length -lt 10000000) { throw "Stubuika archive is unexpectedly small." }
+          Expand-Archive stubuika.zip -DestinationPath runtime-source -Force
+          $exe = Get-ChildItem runtime-source -Recurse -Filter stubuika.exe | Select-Object -First 1
+          if (-not $exe) { throw "stubuika.exe missing from upstream archive." }
+          $runtimeRoot = Join-Path (Resolve-Path "artifacts/DroidBox-win-x64").Path "runtime/Stubuika"
+          New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
+          Copy-Item (Join-Path $exe.Directory.FullName "*") $runtimeRoot -Recurse -Force
+          $hbZip = "harfbuzz-win64-10.2.0.zip"
+          Invoke-WebRequest -Uri "https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/$hbZip" -OutFile $hbZip
+          Expand-Archive $hbZip -DestinationPath harfbuzz-source -Force
+          $dlls = Get-ChildItem harfbuzz-source -Recurse -Filter *.dll
+          if (-not ($dlls | Where-Object Name -eq "libharfbuzz-0.dll")) { throw "HarfBuzz DLL missing." }
+          Copy-Item $dlls.FullName $runtimeRoot -Force
+          $licenses = Join-Path $runtimeRoot "licenses"
+          New-Item -ItemType Directory -Force -Path $licenses | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/flessan/stubuika/master/LICENSE" -OutFile (Join-Path $licenses "Stubuika-MPL-2.0.txt")
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/harfbuzz/harfbuzz/10.2.0/COPYING" -OutFile (Join-Path $licenses "HarfBuzz-COPYING")
+          $fonts = Join-Path $runtimeRoot "fonts"
+          New-Item -ItemType Directory -Force -Path $fonts | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Berry-OS/luna-ui/master/fonts/Inter-Regular.ttf" -OutFile (Join-Path $fonts "Inter-Regular.ttf")
+          Copy-Item (Join-Path $fonts "Inter-Regular.ttf") (Join-Path $fonts "Inter-Bold.ttf") -Force
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/rsms/inter/master/LICENSE.txt" -OutFile (Join-Path $licenses "Inter-OFL.txt")
+          @(
+            "Bundled runtime: Stubuika Windows x86_64 release stubuika-v2026.11.08",
+            "Stubuika is licensed under Mozilla Public License 2.0. Source: https://github.com/flessan/stubuika",
+            "Stubuika is a downstream fork of Lunaria. Preserve upstream notices.",
+            "HarfBuzz 10.2.0 and Inter font licence notices are in licenses/.",
+            "This experimental backend has not passed the DroidBox APK rendering acceptance test.",
+            "APK execution is not sandboxed. Only run trusted APKs."
+          ) | Set-Content (Join-Path $runtimeRoot "THIRD-PARTY-NOTICES.txt")
+          if (-not (Test-Path (Join-Path $runtimeRoot "stubuika.exe"))) { throw "Bundled runtime executable missing." }
+          "Bundled Stubuika runtime and third-party notices."
+
       - name: Install Velopack CLI
         shell: pwsh
         run: |
