@@ -59,11 +59,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 ## Roadmap
 
-- [ ] Windows-native title bar, Mica styling and NKK app icon
-- [ ] Built-in runtime packaging and automatic discovery
+- [x] First Windows-native title bar, Mica styling and NKK title-bar mark (CI verification pending)
+- [x] Release pipeline stages the Stubuika Windows runtime and its third-party notices; app auto-discovery added (release verification pending)
 - [ ] App library: add, remove, launch and persist APK entries
 - [ ] Human-readable logs and a dedicated diagnostics view
-- [ ] Feedback page and issue templates
+- [x] GitHub Pages feedback form and structured issue template
 - [ ] Fix Stubuika Windows EGL/display initialisation and framework resources
 - [ ] Verify a simple APK end-to-end before claiming app execution
 - [ ] Compatibility test matrix for Java UI, native libraries, graphics, storage and input
