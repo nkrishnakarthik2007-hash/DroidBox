@@ -334,7 +334,7 @@ public partial class MainWindow : Window
                 _activeRuntimeProcess = null;
                 StopRuntimeButton.IsEnabled = false;
                 UpdateRunButton();
-                InspectStatus.Text = $"Runtime exited (code {exitCode}). Log: {logPath}";
+                InspectStatus.Text = exitCode == 0 ? $"Runtime process ended normally, but this does not confirm that the Android app rendered. Open readable diagnostics. Log: {logPath}" : $"Runtime failed (exit code {exitCode}). Open diagnostics for the cause. Log: {logPath}";
                 process.Dispose();
             });
             if (!process.Start())
@@ -403,13 +403,24 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!File.Exists(SettingsPath)) { RuntimePathText.Text = "No runtime selected"; return; }
-            var settings = JsonSerializer.Deserialize<RuntimeSettings>(File.ReadAllText(SettingsPath));
-            _runtimePath = settings?.RuntimePath;
-            RuntimePathText.Text = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath) ? Path.GetFileName(_runtimePath) : "Runtime not found — select it again";
+            if (File.Exists(SettingsPath))
+            {
+                var settings = JsonSerializer.Deserialize<RuntimeSettings>(File.ReadAllText(SettingsPath));
+                if (!string.IsNullOrWhiteSpace(settings?.RuntimePath) && File.Exists(settings.RuntimePath))
+                    _runtimePath = settings.RuntimePath;
+            }
+            if (string.IsNullOrWhiteSpace(_runtimePath) || !File.Exists(_runtimePath))
+            {
+                var bundledRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Stubuika");
+                if (Directory.Exists(bundledRoot))
+                    _runtimePath = Directory.EnumerateFiles(bundledRoot, "stubuika.exe", SearchOption.AllDirectories).FirstOrDefault();
+            }
+            RuntimePathText.Text = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath)
+                ? "Managed runtime · " + Path.GetFileName(_runtimePath)
+                : "Runtime package is not present in this preview build.";
             UpdateRunButton();
         }
-        catch { RuntimePathText.Text = "Runtime settings unavailable"; }
+        catch { RuntimePathText.Text = "Could not locate the managed runtime package."; }
     }
     private void SaveRuntimeSettings()
     {
