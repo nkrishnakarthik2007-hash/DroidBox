@@ -1,0 +1,37 @@
+name: DroidBox feedback
+description: Share feedback about installing, using or testing DroidBox.
+title: "[Feedback] "
+labels: ["feedback"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Feedback type
+      options:
+        - Installation
+        - App compatibility
+        - Runtime or graphics
+        - User interface
+        - Feature request
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DroidBox version
+      placeholder: "e.g. 0.1.15"
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened?
+      description: Explain what you tried, what you expected and what happened.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have not included passwords, private APKs or sensitive personal information.
+          required: true
