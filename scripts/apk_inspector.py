@@ -34,6 +34,7 @@ def _manifest_info(root):
         "target_sdk": None,
         "permissions": [],
         "activities": [],
+        "application_label": None,
     }
     for child in root:
         tag = child.tag.rsplit("}", 1)[-1]
@@ -45,6 +46,7 @@ def _manifest_info(root):
             if permission:
                 result["permissions"].append(permission)
         elif tag == "application":
+            result["application_label"] = child.attrib.get(ANDROID_NS + "label")
             for item in child:
                 if item.tag.rsplit("}", 1)[-1] in ("activity", "activity-alias"):
                     name = item.attrib.get(ANDROID_NS + "name")
