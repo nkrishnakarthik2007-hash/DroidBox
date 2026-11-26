@@ -1,6 +1,6 @@
 # DroidBox Windows application
 
-DroidBox by NKK is a Windows WPF application. The installable release is packaged with **Velopack** so installed copies can receive updates from this public GitHub repository.
+DroidBox by NKK is a Windows WPF application whose primary experience is the **NKK Android Launcher**. The installable release is packaged with **Velopack** so installed copies can receive updates from this public GitHub repository.
 
 ## Installer, shortcuts and uninstall
 
@@ -8,7 +8,7 @@ The Velopack package is branded **NKK DroidBox** and uses the generated seven-si
 
 ## Automatic updates
 
-When code is pushed to the `main` branch, GitHub Actions builds the WPF application, publishes a self-contained Windows x64 app, bundles the APK inspector and experimental runtime, packages a Velopack installer/update feed, and publishes a versioned GitHub Release.
+When code is pushed to the `main` branch, GitHub Actions builds the WPF application, publishes a self-contained Windows x64 app, bundles the APK inspector and the experimental Lunaria Windows x64 runtime, packages a Velopack installer/update feed, and publishes a versioned GitHub Release.
 
 Installed copies check GitHub Releases at startup and have a **Check for updates** button. When an update is available, the user can download it and restart DroidBox to apply it.
 
@@ -25,17 +25,20 @@ DroidBox captures runtime stdout/stderr automatically. Open **Diagnostics & send
 ## Current capabilities
 
 - Windows 11-inspired Mica/dark title bar, NKK identity and custom window controls.
-- Select or drag an APK into the local library.
+- Select or drag APK, APKM, XAPK, APKS or AAB packages into the Android Launcher library.
+- Launch packages from an icon grid; double-click an app or use Launch app.
+- Press F11 for immersive full screen (covers the Windows taskbar); press Escape to restore.
+- Press Ctrl+Shift+M in full screen to reveal the temporary window-control strip.
 - Inspect APK metadata without executing APK code.
 - Search and sort imported apps; double-click an entry to launch.
-- Discover the bundled Stubuika runtime automatically.
+- Discover the bundled Lunaria runtime automatically.
 - Run runtime diagnostics and stop a launched runtime process tree.
 - Capture runtime stdout/stderr in bounded log files.
 - Share sanitized diagnostic reports with explicit user consent.
 
 ## Experimental runtime
 
-The current Stubuika backend remains experimental. Windows EGL/display initialization and framework resources are still under investigation. A process exit code of zero is not proof that an APK rendered. Native Windows end-to-end rendering must pass before DroidBox claims general APK execution.
+The bundled runtime is Project Lunaria 2026.11.24 (the current upstream release at the time of this build). It accepts APK, APKM, XAPK, APKS and AAB package paths. Native Windows display/audio behavior remains unverified upstream; the launcher can hand a package to the runtime, but visible rendering must be verified on a real Windows desktop. A process exit code of zero is not proof that an APK rendered. Native Windows end-to-end rendering must pass before DroidBox claims general APK execution.
 
 The [DroidBox smoke-test APK workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/build-smoke-test-apk.yml) builds our small test application.
 
