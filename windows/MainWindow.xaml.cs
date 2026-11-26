@@ -598,14 +598,21 @@ public partial class MainWindow : Window
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = false
+                CreateNoWindow = true
             };
             if (_activeRuntimeProcess is { HasExited: false })
             {
                 MessageBox.Show("A runtime session is already running. Stop it before launching another APK.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            var dataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "LunariaData");
+            var packageCache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "LunariaCache");
+            Directory.CreateDirectory(dataRoot);
+            Directory.CreateDirectory(packageCache);
+            psi.ArgumentList.Add("--data-root");
+            psi.ArgumentList.Add(dataRoot);
             psi.ArgumentList.Add(_selectedApkPath);
+            psi.Environment["LUNARIA_CACHE_DIR"] = packageCache;
             var logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Logs");
             Directory.CreateDirectory(logDirectory);
             var logPath = Path.Combine(logDirectory, $"runtime-{DateTime.Now:yyyyMMdd-HHmmss}.log");
