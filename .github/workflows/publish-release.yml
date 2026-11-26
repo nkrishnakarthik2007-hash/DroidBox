@@ -25,6 +25,9 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Generate NKK application icon
+        run: python scripts/create_windows_icon.py
+
       - name: Build and test WPF application
         run: dotnet build windows/DroidBox.Windows.csproj --configuration Release
 
