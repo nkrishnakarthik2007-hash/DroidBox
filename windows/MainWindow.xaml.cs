@@ -13,6 +13,8 @@ using System.Windows.Media.Animation;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Globalization;
+using System.IO.Compression;
+using System.Text.Json.Serialization;
 using System.Windows.Threading;
 using Velopack;
 using Velopack.Sources;
@@ -243,6 +245,16 @@ public partial class MainWindow : Window
                 _apps.Add(existing);
                 SaveAppLibrary();
             }
+            if (string.IsNullOrWhiteSpace(existing.IconPath) || !File.Exists(existing.IconPath))
+            {
+                existing.IconPath = ExtractPackageIcon(info.FullName, existing.Id);
+                existing.Icon = LoadPackageIcon(existing.IconPath);
+                SaveAppLibrary();
+            }
+            else
+            {
+                existing.Icon = LoadPackageIcon(existing.IconPath);
+            }
             AppLibraryList.SelectedItem = existing;
             AppLibraryList.ScrollIntoView(existing);
             _selectedApkPath = existing.ApkPath;
@@ -326,7 +338,10 @@ public partial class MainWindow : Window
             if (!File.Exists(LibraryIndexPath)) return;
             var saved = JsonSerializer.Deserialize<List<ApkLibraryEntry>>(File.ReadAllText(LibraryIndexPath)) ?? new();
             foreach (var entry in saved.Where(a => !string.IsNullOrWhiteSpace(a.ApkPath) && File.Exists(a.ApkPath) && IsSupportedPackage(a.ApkPath)))
+            {
+                entry.Icon = LoadPackageIcon(entry.IconPath);
                 _apps.Add(entry);
+            }
             EmptyState.Visibility = _apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             AppCountText.Text = $"  ·  {_apps.Count} app{(_apps.Count == 1 ? "" : "s")}";
         }
@@ -358,6 +373,71 @@ public partial class MainWindow : Window
         public string PackageSummary { get; set; } = "";
         public string ApkPath { get; set; } = "";
         public string OriginalPath { get; set; } = "";
+        public string? IconPath { get; set; }
+        [JsonIgnore] public ImageSource? Icon { get; set; }
+    }
+
+    private static string? ExtractPackageIcon(string packagePath, string appId)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(packagePath);
+            string? iconName = null;
+            var manifest = archive.GetEntry("manifest.json");
+            if (manifest is not null && manifest.Length <= 256 * 1024)
+            {
+                using var stream = manifest.Open();
+                using var json = JsonDocument.Parse(stream);
+                if (json.RootElement.TryGetProperty("icon", out var iconValue))
+                    iconName = iconValue.GetString()?.Replace('\\', '/');
+            }
+
+            ZipArchiveEntry? iconEntry = null;
+            if (!string.IsNullOrWhiteSpace(iconName) && !iconName.StartsWith('/') && !iconName.Split('/').Contains(".."))
+                iconEntry = archive.GetEntry(iconName);
+
+            if (iconEntry is null)
+            {
+                iconEntry = archive.Entries
+                    .Where(e => e.Length > 0 && e.Length <= 2 * 1024 * 1024 &&
+                        (e.FullName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                         e.FullName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) &&
+                        (e.FullName.Contains("/mipmap-", StringComparison.OrdinalIgnoreCase) ||
+                         e.FullName.Contains("/drawable-", StringComparison.OrdinalIgnoreCase) ||
+                         Path.GetFileName(e.FullName).Equals("icon.png", StringComparison.OrdinalIgnoreCase)))
+                    .OrderByDescending(e => e.FullName.Contains("xxxhdpi", StringComparison.OrdinalIgnoreCase))
+                    .ThenByDescending(e => e.Length)
+                    .FirstOrDefault();
+            }
+            if (iconEntry is null || iconEntry.Length <= 0 || iconEntry.Length > 2 * 1024 * 1024) return null;
+
+            var iconDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Icons");
+            Directory.CreateDirectory(iconDirectory);
+            var extension = iconEntry.FullName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ? ".webp" : ".png";
+            var destination = Path.Combine(iconDirectory, appId + extension);
+            using (var input = iconEntry.Open())
+            using (var output = File.Create(destination))
+                input.CopyTo(output);
+            return destination;
+        }
+        catch { return null; }
+    }
+
+    private static ImageSource? LoadPackageIcon(string? path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.UriSource = new Uri(path, UriKind.Absolute);
+            bitmap.DecodePixelWidth = 128;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch { return null; }
     }
 
     private async Task InspectAsync(string apkPath, CancellationToken cancellationToken)
