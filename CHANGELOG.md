@@ -4,6 +4,17 @@ All notable DroidBox changes are documented here. New changes must be added at t
 
 ## [Unreleased]
 
+### Fixed
+- Keep the startup splash visible until the main WPF launcher has rendered its first frame; remove the transparent-window handover that could expose a black/empty window.
+- Add persistent application startup, update, APK-inspection and unhandled-exception logs alongside Android runtime logs.
+- Backfill missing icons for APKs already in the library and support PNG/WebP/JPEG launcher-image candidates, converting supported formats to PNG for WPF.
+- Clarify that installed Setup builds download and stage updates inside DroidBox; GitHub commits become app updates only after a successful stable release is published.
+
+### Changed
+- Show the update-available prompt with the Telugu action phrase **ఇన్‌స్టాల్ చేసుకో** while keeping the rest of the interface in English.
+- Include recent application-startup logs as well as Android-runtime logs in the user-approved diagnostic report.
+
+
 ### Research
 - Added a source-level Windows EGL investigation identifying the null native-display handoff in the exact bundled Stubuika release tag as a likely startup blocker; documented the Windows default-display/HWND validation path without claiming a verified fix.
 
