@@ -37,9 +37,13 @@ public partial class DiagnosticsWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = "Could not send report · " + ex.Message;
-            MessageBox.Show(
-                ex.Message + "\n\nGitHub CLI is used for secure sign-in. Install it from https://cli.github.com/ and run 'gh auth login' once if it is not already connected.",
-                "Could not send diagnostics", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (MessageBox.Show(
+                ex.Message + "\n\nWould you like DroidBox to open GitHub setup/sign-in now?",
+                "GitHub connection needed", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            {
+                try { GitHubDiagnosticsUploader.StartGitHubConnection(); }
+                catch (Exception launchError) { StatusText.Text = "Could not open GitHub setup · " + launchError.Message; }
+            }
         }
         finally
         {
