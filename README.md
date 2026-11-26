@@ -38,7 +38,7 @@ DroidBox automatically saves startup, error, update, APK-inspection, and Android
 
 ## Runtime and open-source acknowledgements
 
-DroidBox currently evaluates [Stubuika](https://github.com/flessan/stubuika), a downstream fork of [Lunaria](https://github.com/yui0/lunaria). Stubuika is distributed under the **Mozilla Public License 2.0 (MPL-2.0)**. If Stubuika files are bundled or modified, preserve the upstream copyright and licence notices and make the corresponding MPL-covered source available as required by the licence. Third-party libraries and fonts retain their own licences; see the bundled `licenses/` directory in runtime packages.
+DroidBox's current Windows runtime package is based on [Project Lunaria](https://github.com/yui0/lunaria), licensed under the **Mozilla Public License 2.0 (MPL-2.0)**. The project previously evaluated [Stubuika](https://github.com/flessan/stubuika), a downstream Lunaria fork. Preserve the exact upstream copyright and licence notices for whichever runtime version is bundled, and make MPL-covered source available as required by the licence. Third-party libraries and fonts retain their own licences; see the bundled `licenses/` directory in runtime packages.
 
 DroidBox's launcher and original code are separate from the Stubuika project. Do not imply that upstream Stubuika authors endorse DroidBox.
 
