@@ -627,10 +627,16 @@ public partial class MainWindow : Window
                 MessageBox.Show("A runtime session is already running. Stop it before launching another APK.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            var dataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "LunariaData");
-            var packageCache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "LunariaCache");
+            var userDataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox");
+            var dataRoot = Path.Combine(userDataRoot, "LunariaData");
+            var packageCache = Path.Combine(userDataRoot, "LunariaCache");
+            var runtimeConfig = Path.Combine(userDataRoot, "lunaria.conf");
+            Directory.CreateDirectory(userDataRoot);
             Directory.CreateDirectory(dataRoot);
             Directory.CreateDirectory(packageCache);
+            if (!File.Exists(runtimeConfig)) File.WriteAllText(runtimeConfig, "# NKK Android Launcher · persistent Lunaria settings\n");
+            psi.ArgumentList.Add("--config");
+            psi.ArgumentList.Add(runtimeConfig);
             psi.ArgumentList.Add("--data-root");
             psi.ArgumentList.Add(dataRoot);
             psi.ArgumentList.Add(_selectedApkPath);
