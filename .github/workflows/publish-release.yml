@@ -4,14 +4,18 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: droidbox-release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   release:
@@ -24,6 +28,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+
+      - name: Generate NKK application icon
+        run: python scripts/create_windows_icon.py
 
       - name: Build and test WPF application
         run: dotnet build windows/DroidBox.Windows.csproj --configuration Release
@@ -57,6 +64,144 @@ jobs:
           & $pythonExe -c $probeCode $rootFull --help
           if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed its startup check." }
 
+
+      - name: Bundle the Lunaria Windows x64 runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $uri = "https://github.com/yui0/lunaria/releases/download/2026.11.24/lunaria-2026-11-24-windows-x86_64.zip"
+          Invoke-WebRequest -Uri $uri -OutFile lunaria.zip
+          $expectedSha256 = "E505703FA8756AEC7B362CFB69B355FB49B79C31346B9D311BBD30917A8BEDCA"
+          $actualSha256 = (Get-FileHash lunaria.zip -Algorithm SHA256).Hash
+          if ($actualSha256 -ne $expectedSha256) { throw "Lunaria archive SHA-256 mismatch: $actualSha256" }
+          if ((Get-Item lunaria.zip).Length -lt 10000000) { throw "Lunaria archive is unexpectedly small." }
+          Expand-Archive lunaria.zip -DestinationPath runtime-source -Force
+          $exe = Get-ChildItem runtime-source -Recurse -Filter lunaria.exe | Select-Object -First 1
+          if (-not $exe) { throw "lunaria.exe missing from upstream archive." }
+          $runtimeRoot = Join-Path (Resolve-Path "artifacts/DroidBox-win-x64").Path "runtime/Lunaria"
+          New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
+          Copy-Item (Join-Path $exe.Directory.FullName "*") $runtimeRoot -Recurse -Force
+          $frameworkZip = "platform-31_r01.zip"
+          Invoke-WebRequest -Uri "https://dl.google.com/android/repository/$frameworkZip" -OutFile $frameworkZip
+          $frameworkSha1 = (Get-FileHash $frameworkZip -Algorithm SHA1).Hash.ToLowerInvariant()
+          if ($frameworkSha1 -ne "ca5bcaa565cb37e9d287051d6dd0e49a5426ec29") { throw "Android SDK Platform 31 archive SHA-1 mismatch: $frameworkSha1" }
+          $frameworkRoot = Join-Path $runtimeRoot "runtime/framework-res"
+          python scripts/install_framework_resources.py $frameworkZip $frameworkRoot
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $frameworkRoot "resources.arsc"))) { throw "Android framework resources were not installed." }
+          $licenses = Join-Path $runtimeRoot "licenses"
+          New-Item -ItemType Directory -Force -Path $licenses | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yui0/lunaria/2026.11.24/LICENSE" -OutFile (Join-Path $licenses "Lunaria-MPL-2.0.txt")
+          @(
+            "Bundled runtime: Project Lunaria 2026.11.24 Windows x86_64 release.",
+            "Lunaria is licensed under Mozilla Public License 2.0. Source: https://github.com/yui0/lunaria",
+            "Android SDK Platform 31 framework resources are copied unmodified from Google's android-12/android.jar after SHA-1 verification; see runtime/framework-res/SOURCE.txt and NOTICES/.",
+            "Lunaria is an experimental Android compatibility runtime; native Windows display and audio remain unverified upstream.",
+            "APK execution is not sandboxed. Only run trusted Android packages."
+          ) | Set-Content (Join-Path $runtimeRoot "THIRD-PARTY-NOTICES.txt")
+          if (-not (Test-Path (Join-Path $runtimeRoot "lunaria.exe"))) { throw "Bundled Lunaria executable missing." }
+          "Bundled Lunaria runtime and licence notices."
+
+      - name: Run native Windows Lunaria smoke test
+        continue-on-error: true
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $runtime = Get-ChildItem "artifacts/DroidBox-win-x64/runtime/Lunaria" -Recurse -Filter lunaria.exe | Select-Object -First 1
+          if (-not $runtime) { throw "Lunaria executable missing before smoke test." }
+          gh run download 45319538426 --repo $env:GITHUB_REPOSITORY --name droidbox-smoke-test-apk --dir smoke-test
+          $apk = Get-ChildItem smoke-test -Recurse -Filter *.apk | Select-Object -First 1
+          if (-not $apk) { throw "Smoke-test APK artifact was not found." }
+          $dataRoot = Join-Path $PWD "smoke-data"
+          $cache = Join-Path $PWD "smoke-cache"
+          $frames = Join-Path $PWD "smoke-frames"
+          New-Item -ItemType Directory -Force -Path $dataRoot,$cache,$frames | Out-Null
+          $env:LUNARIA_CACHE_DIR = $cache
+          $env:LUNARIA_DUMP_DIR = $frames
+          $env:LUNARIA_DUMP_FRAME = "0,60,120"
+          $env:LUNARIA_COMP_SHOT_S = "0.000000001"
+          $psi = [System.Diagnostics.ProcessStartInfo]::new()
+          $psi.FileName = $runtime.FullName
+          $psi.WorkingDirectory = $runtime.Directory.FullName
+          $psi.UseShellExecute = $false
+          $psi.CreateNoWindow = $true
+          $psi.RedirectStandardOutput = $true
+          $psi.RedirectStandardError = $true
+          $psi.ArgumentList.Add("--data-root")
+          $psi.ArgumentList.Add($dataRoot)
+          $psi.ArgumentList.Add($apk.FullName)
+          $process = [System.Diagnostics.Process]::Start($psi)
+          $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+          $stderrTask = $process.StandardError.ReadToEndAsync()
+          Start-Sleep -Seconds 2
+          if (-not $process.WaitForExit(6000)) {
+            "Runtime remained active for 8 seconds; stopping the smoke-test process." | Set-Content smoke-test-result.txt
+            $process.Kill($true)
+            $process.WaitForExit()
+          } else {
+            "Runtime exited with code $($process.ExitCode)." | Set-Content smoke-test-result.txt
+          }
+          $stdoutTask.GetAwaiter().GetResult() | Set-Content smoke-stdout.log
+          $stderrTask.GetAwaiter().GetResult() | Set-Content smoke-stderr.log
+          $runtimeLog = Get-Content smoke-stderr.log -Raw
+          $requiredSignals = @(
+            "init_host_egl: EGL 1.5 ready",
+            "MainActivity.onResume()V",
+            "[overlay] parsed guest document"
+          )
+          foreach ($signal in $requiredSignals) {
+            if (-not $runtimeLog.Contains($signal)) { throw "Lunaria smoke test did not reach required startup stage: $signal" }
+          }
+          if ($runtimeLog.Contains("[framework] resources unavailable")) { throw "Lunaria could not find Android framework resources. Check the Platform 31 bundle." }
+          "PASS: EGL initialised, Android Activity reached onResume, guest UI parsed, and no missing-framework-resource warning was reported." | Add-Content smoke-test-result.txt
+          $captured = @(Get-ChildItem $frames -Filter "comp_*.ppm" -ErrorAction SilentlyContinue)
+          if ($captured.Count -gt 0) {
+            $shot = $captured[0]
+            $bytes = [System.IO.File]::ReadAllBytes($shot.FullName)
+            $newlineCount = 0
+            $payloadStart = -1
+            for ($index = 0; $index -lt $bytes.Length; $index++) {
+              if ($bytes[$index] -eq 10) {
+                $newlineCount++
+                if ($newlineCount -eq 3) { $payloadStart = $index + 1; break }
+              }
+            }
+            if ($payloadStart -lt 0 -or ($bytes.Length - $payloadStart) -lt 300) { throw "Compositor PPM screenshot has an invalid header or no pixel payload." }
+            $sum = 0.0
+            $colors = [System.Collections.Generic.HashSet[int]]::new()
+            $samples = 0
+            for ($index = $payloadStart; $index -lt $bytes.Length; $index += 96) {
+              if (($index + 2) -ge $bytes.Length) { break }
+              $red = [int]$bytes[$index]
+              $green = [int]$bytes[$index + 1]
+              $blue = [int]$bytes[$index + 2]
+              $sum += ($red + $green + $blue) / 3.0
+              [void]$colors.Add(($red -shl 16) -bor ($green -shl 8) -bor $blue)
+              $samples++
+            }
+            $average = $sum / [Math]::Max(1,$samples)
+            "Compositor screenshot $($shot.Name): average brightness=$([Math]::Round($average,2)), sampled colors=$($colors.Count)." | Add-Content smoke-test-result.txt
+            if ($average -lt 3 -or $colors.Count -lt 8) { throw "Lunaria compositor screenshot is blank or black." }
+            "PASS: non-black composed Windows app frame captured." | Add-Content smoke-test-result.txt
+          } else {
+            "No compositor PPM screenshot was emitted; EGL and Android UI lifecycle passed, but visible frame output remains unverified." | Add-Content smoke-test-result.txt
+          }
+
+      - name: Upload native Windows smoke-test logs and frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DroidBox-Lunaria-Windows-Smoke-Test
+          path: |
+            smoke-test-result.txt
+            smoke-stdout.log
+            smoke-stderr.log
+            smoke-frames/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Install Velopack CLI
         shell: pwsh
         run: |
@@ -71,11 +216,20 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $version = "0.1.${{ github.run_number }}"
-          vpk pack --packId NKK.DroidBox --packVersion $version --packDir artifacts/DroidBox-win-x64 --mainExe DroidBox.Windows.exe --outputDir artifacts/velopack --channel win
+          vpk pack --packId NKK.DroidBox --packTitle "NKK DroidBox" --packAuthors "NKK" --icon windows/Assets/DroidBox.ico --packVersion $version --packDir artifacts/DroidBox-win-x64 --mainExe DroidBox.Windows.exe --outputDir artifacts/velopack --channel win --shortcuts Desktop,StartMenuRoot
           if (-not (Test-Path "artifacts/velopack/releases.win.json")) { throw "Velopack release feed was not generated." }
           if (-not (Get-ChildItem "artifacts/velopack" -Filter "*Setup.exe")) { throw "Velopack installer was not generated." }
 
+      - name: Upload installer preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DroidBox-Velopack-Installer
+          path: artifacts/velopack/*
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Publish GitHub Release
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
@@ -86,11 +240,3 @@ jobs:
           $assets = @(Get-ChildItem "artifacts/velopack" -File | ForEach-Object { $_.FullName })
           if ($assets.Count -eq 0) { throw "No Velopack release assets found." }
           gh release create $tag @assets --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "DroidBox $version" --notes "Automated DroidBox Windows release from commit $env:GITHUB_SHA. Install with the Setup.exe file. Installed copies can check this public GitHub Releases feed for updates." --latest
-
-      - name: Upload installer preview artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: DroidBox-Velopack-Installer
-          path: artifacts/velopack/*
-          if-no-files-found: error
-          retention-days: 14

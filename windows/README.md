@@ -1,39 +1,45 @@
 # DroidBox Windows application
 
-DroidBox by NKK is a Windows WPF application. The installable release is packaged with **Velopack** so installed copies can receive updates from this public GitHub repository.
+DroidBox by NKK is a Windows WPF application whose primary experience is the **NKK Android Launcher**. The installable release is packaged with **Velopack** so installed copies can receive updates from this public GitHub repository.
+
+## Installer, shortcuts and uninstall
+
+The Velopack package is branded **NKK DroidBox** and uses the generated seven-size NKK `.ico` for the executable, Setup installer and update dialogs. It creates Desktop and Start menu shortcuts. Velopack registers the installed app for normal Windows uninstall management; users can remove it from **Settings → Apps → Installed apps**. The standard Setup.exe is a per-user installer and should not require administrator elevation.
 
 ## Automatic updates
 
-When code is pushed to the `main` branch in `windows/**` or `scripts/**`, GitHub Actions:
+When code is pushed to the `main` branch, GitHub Actions builds the WPF application, publishes a self-contained Windows x64 app, bundles the APK inspector, Lunaria Windows x64 runtime and checksum-verified Android Platform 31 framework resources, packages a Velopack installer/update feed, and publishes a versioned GitHub Release.
 
-1. Builds the WPF application.
-2. Publishes a self-contained Windows x64 application.
-3. Bundles the embedded Python APK inspector.
-4. Packages a Velopack installer and update feed.
-5. Publishes a versioned GitHub Release.
+Installed copies check GitHub Releases at startup and have a **Check for updates** button. When an update is available, the user can download it and restart DroidBox to apply it.
 
-An installed DroidBox checks GitHub Releases at startup and also has a **Check for updates** button. When an update is available, the user can download it and restart DroidBox to apply it.
-
-**Important:** Existing portable ZIP previews are not Velopack installations and cannot self-update. Install the generated `*-Setup.exe` once to enable in-app updates. Do not delete the user's `%LOCALAPPDATA%\\DroidBox` folder when replacing or troubleshooting the application.
+**Important:** Portable preview builds are not Velopack installations and cannot self-update. Install the generated `*-Setup.exe` once to enable in-app updates. Do not delete the user's `%LOCALAPPDATA%\\DroidBox` folder when replacing or troubleshooting the application.
 
 ## User data
 
-Settings, diagnostic logs and other user-managed data must remain outside the replaceable application install directory. Current settings are stored under `%LOCALAPPDATA%\\DroidBox` and runtime logs under `%LOCALAPPDATA%\\DroidBox\\Logs`. APK files selected from elsewhere remain in their original locations; DroidBox does not currently maintain a full APK library or Android per-app data store.
+Settings, diagnostic logs, the APK library index, imported Android packages, extracted app icons, Lunaria's Android data root and its package cache are stored under `%LOCALAPPDATA%\\DroidBox`. The runtime is launched with an explicit `--data-root` and `LUNARIA_CACHE_DIR`, so updating or replacing the application does not erase guest app data or package caches. These files are kept outside the replaceable application install directory. Imported APKs are copied into `%LOCALAPPDATA%\\DroidBox\\Apps`; removing an app from the library deletes only that managed copy, not the original APK selected by the user.
+
+## Diagnostics and report sharing
+
+DroidBox captures runtime stdout/stderr automatically. Open **Diagnostics & send report** to search and filter logs, or send a report to the public GitHub repository after reviewing the disclosure and confirming. A failed runtime exit also offers to send a report. The report contains up to five recent runtime logs and basic Windows/.NET details; APK files are never uploaded. Redaction is best-effort. GitHub CLI must be installed and signed in once with `gh auth login`. See [diagnostic reporting](../docs/DIAGNOSTIC-REPORTING.md).
 
 ## Current capabilities
 
-- Modern glass-style Windows 11 interface with NKK branding and a short animated startup splash.
-- Select or drag an APK into DroidBox.
+- Windows 11-inspired Mica/dark title bar, NKK identity and custom window controls.
+- Select or drag APK, APKM, XAPK, APKS or AAB packages into the Android Launcher library.
+- Show extracted PNG application icons when the package contains a supported launcher icon; otherwise use a letter tile.
+- Launch packages from an icon grid; double-click an app or use Launch app.
+- Press F11 for immersive full screen (covers the Windows taskbar); press Escape to restore.
+- Press Ctrl+Shift+M in full screen to reveal the temporary window-control strip.
 - Inspect APK metadata without executing APK code.
-- Select a Stubuika or Lunaria Windows executable; the path is saved in local settings.
-- Run runtime diagnostics.
-- Launch a selected APK after a security warning.
-- Stop the launched runtime process tree.
-- Capture runtime stdout/stderr in a bounded diagnostic log.
+- Search and sort imported apps; double-click an entry to launch.
+- Discover the bundled Lunaria runtime automatically.
+- Run runtime diagnostics and stop a launched runtime process tree.
+- Capture runtime stdout/stderr in bounded log files.
+- Share sanitized diagnostic reports with explicit user consent.
 
-## Experimental runtime setup
+## Experimental runtime
 
-The current preview still requires a separate runtime executable to be selected manually. Runtime auto-download and silent setup will be added only after the selected engine passes graphics, fonts, and real APK rendering tests. The current Stubuika test log showed that its guest window was created, but native EGL display initialization and text shaping failed, so it is not yet ready to be bundled as the default engine.
+The bundled runtime is Project Lunaria 2026.11.24 (the current upstream release at the time of this build), together with unmodified Android SDK Platform 31 framework resources verified against Google's archive checksum. It accepts APK, APKM, XAPK, APKS and AAB package paths. Native Windows display/audio behavior remains unverified upstream; the launcher can hand a package to the runtime, but visible rendering must be verified on a real Windows desktop. A process exit code of zero is not proof that an APK rendered. Native Windows end-to-end rendering must pass before DroidBox claims general APK execution.
 
 The [DroidBox smoke-test APK workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/build-smoke-test-apk.yml) builds our small test application.
 
@@ -48,4 +54,4 @@ cd windows
 dotnet run
 ```
 
-A development run is not a Velopack installation, so update checks are intentionally unavailable when running from the source tree.
+A development run is not a Velopack installation, so update checks are unavailable when running from the source tree.

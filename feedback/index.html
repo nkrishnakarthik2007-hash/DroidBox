@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DroidBox Feedback · NKK</title>
+<style>
+:root{color-scheme:dark;font-family:Segoe UI,system-ui,sans-serif;background:#0b1020;color:#f4f5ff}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% 0%,#292052 0,transparent 42%),#0b1020}
+main{max-width:760px;margin:50px auto;padding:28px}.brand{display:flex;align-items:center;gap:12px}.mark{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:#5744c9;border:1px solid #a99bff;font-size:26px;font-weight:900}.muted{color:#aeb8d0}.panel{margin-top:28px;padding:26px;border:1px solid #38425e;border-radius:22px;background:#171f33}h1{font-size:32px;margin:28px 0 8px}label{display:block;margin:18px 0 7px;font-weight:600;font-size:13px}input,select,textarea{width:100%;padding:13px 14px;border:1px solid #46516d;border-radius:11px;background:#0e1729;color:#f4f5ff;font:inherit}textarea{min-height:130px;resize:vertical}button{margin-top:22px;padding:13px 18px;border:0;border-radius:12px;background:#735bff;color:white;font-weight:700;font-size:14px;cursor:pointer}button:hover{filter:brightness(1.12)}a{color:#b6aaff}.note{font-size:12px;line-height:1.6}.foot{margin-top:24px;font-size:12px;color:#7f8ba8}
+</style></head>
+<body><main>
+<div class="brand"><div class="mark">N</div><div><strong style="font-size:22px">DroidBox</strong><div class="muted" style="font-size:10px;font-weight:700;letter-spacing:1px">NKK · ANDROID, MEET WINDOWS.</div></div></div>
+<h1>Help us make DroidBox better.</h1><p class="muted">Tell us what happened. Your feedback becomes a GitHub issue that the project can track.</p>
+<form class="panel" id="feedback">
+<label for="kind">What is this about?</label><select id="kind"><option>Bug report</option><option>Installation feedback</option><option>APK compatibility</option><option>Feature request</option><option>General feedback</option></select>
+<label for="rating">How was your experience?</label><select id="rating"><option>Choose an option</option><option>Great</option><option>Good</option><option>Okay</option><option>Frustrating</option><option>Could not use DroidBox</option></select>
+<label for="version">DroidBox version (if known)</label><input id="version" placeholder="e.g. 0.1.15">
+<label for="windows">Windows version</label><input id="windows" placeholder="e.g. Windows 11 24H2">
+<label for="details">Tell us what happened</label><textarea id="details" required placeholder="What did you try? What did you expect? What happened instead?"></textarea>
+<p class="note muted">When you continue, GitHub opens with your report pre-filled. Review it before submitting. Please do not include passwords, private APKs, personal files or sensitive information.</p>
+<button type="submit">Continue to GitHub →</button>
+</form><p class="foot">Made by N. Krishna Karthik · <a href="https://github.com/nkrishnakarthik2007-hash/DroidBox">View DroidBox on GitHub</a></p>
+</main>
+<script>
+document.getElementById('feedback').addEventListener('submit',function(e){e.preventDefault();const val=id=>document.getElementById(id).value.trim();const title='[Feedback] '+val('kind');const body=['### Feedback type',val('kind'),'### Experience',val('rating')||'Not specified','### DroidBox version',val('version')||'Not specified','### Windows version',val('windows')||'Not specified','### Details',val('details'),'---','Submitted through the DroidBox feedback page.'].join('\n\n');const url='https://github.com/nkrishnakarthik2007-hash/DroidBox/issues/new?title='+encodeURIComponent(title)+'&body='+encodeURIComponent(body);window.open(url,'_blank','noopener');});
+</script></body></html>

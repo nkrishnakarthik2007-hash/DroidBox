@@ -30,3 +30,13 @@ DroidBox is experimental Android compatibility research for Windows. Keep change
 
 ## Performance
 Record host RAM, CPU, APK/version/hash, startup time, idle memory, peak memory, CPU during interaction, renderer and compatibility outcome.
+
+## Documentation is part of every change
+
+Every feature or behaviour change must update the documentation in the same pull request:
+1. Add a dated or versioned entry under the appropriate section in `CHANGELOG.md`.
+2. Update `README.md` when setup, user-visible behaviour, supported features, limitations or screenshots change.
+3. Update architecture/research notes when runtime internals, dependencies or compatibility claims change.
+4. Add or update tests for behaviour that can be tested automatically.
+5. Never mark a feature as complete based only on a successful compile. State whether it was built, tested, or verified on a real Windows machine.
+6. Keep the README honest about experimental status, known failures, security boundaries and unsupported APK features.
