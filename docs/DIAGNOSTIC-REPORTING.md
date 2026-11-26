@@ -28,7 +28,7 @@ The desktop app reuses an existing GitHub CLI sign-in:
 2. Run `gh auth login` once and sign in to GitHub.
 3. In the Diagnostics window, choose **Send report**.
 
-DroidBox obtains the short-lived CLI-managed authentication context at send time. It does not ask the user to paste a token, store a token in settings, embed a token in the executable, or send credentials to the repository. The GitHub account must be able to create issues in the repository. If permission is insufficient, the app explains the required sign-in refresh.
+DroidBox retrieves the GitHub CLI-managed authentication token at send time and keeps it in memory only for the upload. It does not ask the user to paste a token, store a token in settings, embed a token in the executable, or send credentials to the repository. The GitHub account must be able to create issues in the repository. If permission is insufficient, the app explains the required sign-in refresh.
 
 ## ChatGPT development workflow
 
