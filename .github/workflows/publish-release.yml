@@ -81,12 +81,20 @@ jobs:
           $runtimeRoot = Join-Path (Resolve-Path "artifacts/DroidBox-win-x64").Path "runtime/Lunaria"
           New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
           Copy-Item (Join-Path $exe.Directory.FullName "*") $runtimeRoot -Recurse -Force
+          $frameworkZip = "platform-31_r01.zip"
+          Invoke-WebRequest -Uri "https://dl.google.com/android/repository/$frameworkZip" -OutFile $frameworkZip
+          $frameworkSha1 = (Get-FileHash $frameworkZip -Algorithm SHA1).Hash.ToLowerInvariant()
+          if ($frameworkSha1 -ne "ca5bcaa565cb37e9d287051d6dd0e49a5426ec29") { throw "Android SDK Platform 31 archive SHA-1 mismatch: $frameworkSha1" }
+          $frameworkRoot = Join-Path $runtimeRoot "runtime/framework-res"
+          python scripts/install_framework_resources.py $frameworkZip $frameworkRoot
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $frameworkRoot "resources.arsc"))) { throw "Android framework resources were not installed." }
           $licenses = Join-Path $runtimeRoot "licenses"
           New-Item -ItemType Directory -Force -Path $licenses | Out-Null
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yui0/lunaria/2026.11.24/LICENSE" -OutFile (Join-Path $licenses "Lunaria-MPL-2.0.txt")
           @(
             "Bundled runtime: Project Lunaria 2026.11.24 Windows x86_64 release.",
             "Lunaria is licensed under Mozilla Public License 2.0. Source: https://github.com/yui0/lunaria",
+            "Android SDK Platform 31 framework resources are copied unmodified from Google's android-12/android.jar after SHA-1 verification; see runtime/framework-res/SOURCE.txt and NOTICES/.",
             "Lunaria is an experimental Android compatibility runtime; native Windows display and audio remain unverified upstream.",
             "APK execution is not sandboxed. Only run trusted Android packages."
           ) | Set-Content (Join-Path $runtimeRoot "THIRD-PARTY-NOTICES.txt")
