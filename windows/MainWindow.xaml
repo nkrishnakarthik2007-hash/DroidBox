@@ -11,6 +11,7 @@
   <Style x:Key="Eyebrow" TargetType="TextBlock"><Setter Property="FontSize" Value="10"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#AFA5FF"/></Style>
  </Window.Resources>
  <Grid>
+  <Grid.Background><RadialGradientBrush GradientOrigin="0.12,0.08" Center="0.12,0.08" RadiusX="1.1" RadiusY="1.1"><GradientStop Color="#25204C" Offset="0"/><GradientStop Color="#101629" Offset=".48"/><GradientStop Color="#090B14" Offset="1"/></RadialGradientBrush></Grid.Background>
   <Grid Height="46" VerticalAlignment="Top" Background="#D90C1222" Panel.ZIndex="20">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="46"/><ColumnDefinition Width="46"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" shell:WindowChrome.IsHitTestVisibleInChrome="True">
@@ -22,7 +23,7 @@
    <Button Grid.Column="2" Content="□" Click="MaximizeWindow_Click" Background="Transparent" BorderThickness="0" Padding="0" FontSize="14" FontWeight="Normal" Foreground="#C7CEE2" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
    <Button Grid.Column="3" Content="×" Click="CloseWindow_Click" Background="Transparent" BorderThickness="0" Padding="0" FontSize="19" FontWeight="Normal" Foreground="#C7CEE2" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
   </Grid>
-  <Grid.Background><RadialGradientBrush GradientOrigin="0.12,0.08" Center="0.12,0.08" RadiusX="1.1" RadiusY="1.1"><GradientStop Color="#25204C" Offset="0"/><GradientStop Color="#101629" Offset=".48"/><GradientStop Color="#090B14" Offset="1"/></RadialGradientBrush></Grid.Background>
+  
   <Ellipse Width="430" Height="430" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-210,-130,0" Fill="#267A5BFF" IsHitTestVisible="False"><Ellipse.Effect><BlurEffect Radius="100"/></Ellipse.Effect></Ellipse>
   <Ellipse Width="330" Height="330" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-160,0,0,-170" Fill="#1B20B9D6" IsHitTestVisible="False"><Ellipse.Effect><BlurEffect Radius="90"/></Ellipse.Effect></Ellipse>
   <Grid Margin="30,68,30,22">
