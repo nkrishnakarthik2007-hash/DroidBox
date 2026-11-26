@@ -61,7 +61,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 - [x] First Windows-native title bar, Mica styling and NKK title-bar mark (CI verification pending)
 - [x] Release pipeline stages the Stubuika Windows runtime and its third-party notices; app auto-discovery added (release verification pending)
-- [ ] App library: add, remove, launch and persist APK entries
+- [x] App library: import APKs into local app storage, persist entries, select and remove apps
 - [ ] Human-readable logs and a dedicated diagnostics view
 - [x] GitHub Pages feedback form and structured issue template
 - [ ] Fix Stubuika Windows EGL/display initialisation and framework resources
