@@ -18,7 +18,7 @@ An installed DroidBox checks GitHub Releases at startup and also has a **Check f
 
 ## User data
 
-Settings, diagnostic logs and other user-managed data must remain outside the replaceable application install directory. Current settings are stored under `%LOCALAPPDATA%\\DroidBox` and runtime logs under `%LOCALAPPDATA%\\DroidBox\\Logs`. APK files selected from elsewhere remain in their original locations; DroidBox does not currently maintain a full APK library or Android per-app data store.
+Settings, diagnostic logs, the APK library index and imported APK copies are stored under `%LOCALAPPDATA%\\DroidBox`. These files are kept outside the replaceable application install directory. Imported APKs are copied into `%LOCALAPPDATA%\\DroidBox\\Apps`; removing an app from the library deletes only that managed copy, not the original APK selected by the user. DroidBox does not yet provide Android per-app data storage.
 
 ## Current capabilities
 
