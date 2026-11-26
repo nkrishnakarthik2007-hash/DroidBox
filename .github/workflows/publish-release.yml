@@ -153,7 +153,8 @@ jobs:
           foreach ($signal in $requiredSignals) {
             if (-not $runtimeLog.Contains($signal)) { throw "Lunaria smoke test did not reach required startup stage: $signal" }
           }
-          "PASS: EGL initialised, Android Activity reached onResume, and the guest UI document was parsed." | Add-Content smoke-test-result.txt
+          if ($runtimeLog.Contains("[framework] resources unavailable")) { throw "Lunaria could not find Android framework resources. Check the Platform 31 bundle." }
+          "PASS: EGL initialised, Android Activity reached onResume, guest UI parsed, and no missing-framework-resource warning was reported." | Add-Content smoke-test-result.txt
           $captured = @(Get-ChildItem $frames -Filter *.png -ErrorAction SilentlyContinue)
           if ($captured.Count -gt 0) {
             "Captured $($captured.Count) guest frame image(s)." | Add-Content smoke-test-result.txt
