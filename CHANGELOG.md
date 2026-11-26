@@ -6,6 +6,7 @@ All notable DroidBox changes are documented here. New changes must be added at t
 
 ### Added
 - Added a persistent local APK library with import, selection and removal actions. Imported APKs are copied into the DroidBox app-data folder; removing an entry deletes only the managed copy, not the original source APK.
+- Added a GitHub Actions workflow to deploy the feedback form to GitHub Pages.
 
 ### Changed
 - Reworked the Windows shell window chrome: custom NKK title bar with minimise, maximise/restore and close controls.
