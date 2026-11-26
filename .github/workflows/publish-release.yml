@@ -92,6 +92,84 @@ jobs:
           if (-not (Test-Path (Join-Path $runtimeRoot "lunaria.exe"))) { throw "Bundled Lunaria executable missing." }
           "Bundled Lunaria runtime and licence notices."
 
+      - name: Run native Windows Lunaria smoke test
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $runtime = Get-ChildItem "artifacts/DroidBox-win-x64/runtime/Lunaria" -Recurse -Filter lunaria.exe | Select-Object -First 1
+          if (-not $runtime) { throw "Lunaria executable missing before smoke test." }
+          gh run download 45319538426 --repo $env:GITHUB_REPOSITORY --name droidbox-smoke-test-apk --dir smoke-test
+          $apk = Get-ChildItem smoke-test -Recurse -Filter *.apk | Select-Object -First 1
+          if (-not $apk) { throw "Smoke-test APK artifact was not found." }
+          $dataRoot = Join-Path $PWD "smoke-data"
+          $cache = Join-Path $PWD "smoke-cache"
+          $frames = Join-Path $PWD "smoke-frames"
+          New-Item -ItemType Directory -Force -Path $dataRoot,$cache,$frames | Out-Null
+          $env:LUNARIA_CACHE_DIR = $cache
+          $env:LUNARIA_DUMP_DIR = $frames
+          $env:LUNARIA_DUMP_FRAME = "0,60,120"
+          $psi = [System.Diagnostics.ProcessStartInfo]::new()
+          $psi.FileName = $runtime.FullName
+          $psi.WorkingDirectory = $runtime.Directory.FullName
+          $psi.UseShellExecute = $false
+          $psi.CreateNoWindow = $true
+          $psi.RedirectStandardOutput = $true
+          $psi.RedirectStandardError = $true
+          $psi.ArgumentList.Add("--data-root")
+          $psi.ArgumentList.Add($dataRoot)
+          $psi.ArgumentList.Add($apk.FullName)
+          $process = [System.Diagnostics.Process]::Start($psi)
+          $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+          $stderrTask = $process.StandardError.ReadToEndAsync()
+          if (-not $process.WaitForExit(45000)) {
+            "Runtime still active after 45 seconds; stopping test process." | Set-Content smoke-test-result.txt
+            $process.Kill($true)
+            $process.WaitForExit()
+          } else {
+            "Runtime exited with code $($process.ExitCode)." | Set-Content smoke-test-result.txt
+          }
+          $stdoutTask.GetAwaiter().GetResult() | Set-Content smoke-stdout.log
+          $stderrTask.GetAwaiter().GetResult() | Set-Content smoke-stderr.log
+          $captured = @(Get-ChildItem $frames -Filter *.png -ErrorAction SilentlyContinue)
+          if ($captured.Count -eq 0) { throw "Lunaria did not capture a guest frame. Inspect smoke-stderr.log and smoke-stdout.log." }
+          Add-Type -AssemblyName System.Drawing
+          foreach ($frame in $captured) {
+            $bitmap = [System.Drawing.Bitmap]::new($frame.FullName)
+            try {
+              $brightness = 0.0
+              $colors = [System.Collections.Generic.HashSet[int]]::new()
+              $samples = 0
+              for ($yy = 0; $yy -lt $bitmap.Height; $yy += 8) {
+                for ($xx = 0; $xx -lt $bitmap.Width; $xx += 8) {
+                  $pixel = $bitmap.GetPixel($xx,$yy)
+                  $brightness += ($pixel.R + $pixel.G + $pixel.B) / 3.0
+                  [void]$colors.Add(($pixel.R -shl 16) -bor ($pixel.G -shl 8) -bor $pixel.B)
+                  $samples++
+                }
+              }
+              $average = $brightness / [Math]::Max(1,$samples)
+              "Frame $($frame.Name): $($bitmap.Width)x$($bitmap.Height), average brightness=$([Math]::Round($average,2)), sampled colors=$($colors.Count)" | Add-Content smoke-test-result.txt
+              if ($average -lt 2 -or $colors.Count -lt 8) { throw "Captured frame appears blank or black: $($frame.Name)" }
+            } finally { $bitmap.Dispose() }
+          }
+          "Native Windows guest-frame capture completed." | Add-Content smoke-test-result.txt
+
+      - name: Upload native Windows smoke-test logs and frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DroidBox-Lunaria-Windows-Smoke-Test
+          path: |
+            smoke-test-result.txt
+            smoke-stdout.log
+            smoke-stderr.log
+            smoke-frames/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Install Velopack CLI
         shell: pwsh
         run: |
