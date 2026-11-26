@@ -20,12 +20,23 @@ The intended user experience is a normal Windows application:
 
 - APK selection, drag/drop and safe metadata inspection are implemented.
 - A WPF .NET 8 Windows shell and GitHub release/update pipeline exist.
-- Stubuika is the experimental execution backend. Its Windows package has been tested for CLI diagnostics, but APK UI rendering is **not yet verified**.
-- Recent logs show that Stubuika creates a GLFW window but fails to obtain a native EGL display; framework resources are also missing in the tested package. Exit code 0 must not be interpreted as a successful app launch.
-- Source inspection of the exact bundled Stubuika release (`stubuika-v2026.11.08`) shows that its Windows native-display helper intentionally returns null, while the desktop EGL path treats that value as fatal. This is a likely Windows-specific blocker; a native Windows EGL/HWND smoke test is still required.
+- The current Windows release workflow bundles Project Lunaria 2026.11.24 and Android Platform 31 framework resources.
+- The latest automated Windows smoke test passed its Android startup checks: EGL 1.5 initialised, the test APK reached `MainActivity.onResume()`, the guest UI tree was parsed, and a non-black compositor frame was captured. This verifies the smoke-test APK only; it does not guarantee every APK will work.
+- A process exit code of 0 alone is not proof that an Android app rendered. DroidBox records runtime output and checks visible compositor output in the automated smoke test.
 - APK execution is not sandboxed. Only use APKs you trust.
 
-## Diagnostic reporting\n\nDroidBox can submit a sanitized diagnostic report to the public GitHub repository after explicit confirmation. It reuses a GitHub CLI sign-in, never embeds a token in the app, and does not upload APK files. Reports create public issues. See [diagnostic reporting details](docs/DIAGNOSTIC-REPORTING.md).\n\n## Runtime and open-source acknowledgements
+## Diagnostic reporting\n\nDroidBox can submit a sanitized diagnostic report to the public GitHub repository after explicit confirmation. It reuses a GitHub CLI sign-in, never embeds a token in the app, and does not upload APK files. Reports create public issues. See [diagnostic reporting details](docs/DIAGNOSTIC-REPORTING.md).\n\n
+## In-app updates
+
+Installed copies created with the **DroidBox Setup** installer use Velopack to check the public GitHub Releases feed. When a stable release is published, DroidBox downloads the update inside the app, shows the download progress, and asks whether to restart and apply it. You do not need to uninstall DroidBox or manually download a new installer for normal updates. Your APK library, settings, runtime data, and logs are stored separately under `%LOCALAPPDATA%\\DroidBox`.
+
+A GitHub commit on a feature branch or an open pull request is not an installable app update. The change must reach `main`, the release workflow must complete successfully, and a stable GitHub Release must be published before installed copies can discover it. Portable preview ZIPs do not support automatic self-updates; use the Setup installer for the in-app update experience.
+
+## Application and runtime logs
+
+DroidBox automatically saves startup, error, update, APK-inspection, and Android-runtime logs under `%LOCALAPPDATA%\\DroidBox\\Logs`. Open **Diagnostics** to search and inspect them. Use **Send report** only when you want to share a sanitized selection with NKK; it creates a public GitHub issue, so review the disclosure before sending. APK files and app-library contents are not uploaded.
+
+## Runtime and open-source acknowledgements
 
 DroidBox currently evaluates [Stubuika](https://github.com/flessan/stubuika), a downstream fork of [Lunaria](https://github.com/yui0/lunaria). Stubuika is distributed under the **Mozilla Public License 2.0 (MPL-2.0)**. If Stubuika files are bundled or modified, preserve the upstream copyright and licence notices and make the corresponding MPL-covered source available as required by the licence. Third-party libraries and fonts retain their own licences; see the bundled `licenses/` directory in runtime packages.
 
@@ -69,7 +80,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 - [x] Configure NKK branding for the Velopack installer and Start menu shortcuts (release workflow verification pending)
 - [ ] Fix Stubuika Windows EGL/display initialisation and framework resources
 - [ ] Verify a simple APK end-to-end before claiming app execution
-- [ ] Extract and display each APK's actual launcher icon and app label
+- [x] Extract and display available PNG/WebP/JPEG app icon resources, including backfilling icons for already-imported APKs; improve adaptive-icon resource resolution
 - [ ] Compatibility test matrix for Java UI, native libraries, graphics, storage and input
 - [ ] App isolation and permissions model
 
