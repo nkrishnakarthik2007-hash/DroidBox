@@ -656,7 +656,12 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (File.Exists(SettingsPath))
+            // Prefer the runtime shipped with this app version. This also migrates
+            // installations that previously saved a path to an older Stubuika build.
+            var bundledRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Lunaria");
+            if (Directory.Exists(bundledRoot))
+                _runtimePath = Directory.EnumerateFiles(bundledRoot, "lunaria.exe", SearchOption.AllDirectories).FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(SettingsPath))
             {
                 var settings = JsonSerializer.Deserialize<RuntimeSettings>(File.ReadAllText(SettingsPath));
                 if (!string.IsNullOrWhiteSpace(settings?.RuntimePath) && File.Exists(settings.RuntimePath))
@@ -664,15 +669,9 @@ public partial class MainWindow : Window
             }
             if (string.IsNullOrWhiteSpace(_runtimePath) || !File.Exists(_runtimePath))
             {
-                var bundledRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Lunaria");
-                if (Directory.Exists(bundledRoot))
-                    _runtimePath = Directory.EnumerateFiles(bundledRoot, "lunaria.exe", SearchOption.AllDirectories).FirstOrDefault();
-                if (string.IsNullOrWhiteSpace(_runtimePath))
-                {
-                    var legacyRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Stubuika");
-                    if (Directory.Exists(legacyRoot))
-                        _runtimePath = Directory.EnumerateFiles(legacyRoot, "stubuika.exe", SearchOption.AllDirectories).FirstOrDefault();
-                }
+                var legacyRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Stubuika");
+                if (Directory.Exists(legacyRoot))
+                    _runtimePath = Directory.EnumerateFiles(legacyRoot, "stubuika.exe", SearchOption.AllDirectories).FirstOrDefault();
             }
             RuntimePathText.Text = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath)
                 ? "Managed runtime · " + Path.GetFileName(_runtimePath)
