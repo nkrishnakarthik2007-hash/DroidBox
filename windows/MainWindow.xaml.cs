@@ -289,7 +289,7 @@ public partial class MainWindow : Window
             var libs = data.TryGetProperty("native_libraries", out var l) && l.ValueKind == JsonValueKind.Array ? l.GetArrayLength() : 0;
             if (AppLibraryList.SelectedItem is ApkLibraryEntry selectedEntry && string.Equals(selectedEntry.ApkPath, apkPath, StringComparison.OrdinalIgnoreCase))
             {
-                selectedEntry.PackageSummary = package;\n                selectedEntry.DisplayName = string.IsNullOrWhiteSpace(version) || version == "—" ? selectedEntry.DisplayName : selectedEntry.DisplayName;
+                selectedEntry.PackageSummary = package;
                 AppLibraryList.Items.Refresh();
                 SaveAppLibrary();
             }
