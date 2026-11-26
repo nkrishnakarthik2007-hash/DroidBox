@@ -22,11 +22,11 @@ The DroidBox repository is public. A submitted issue and its diagnostic text are
 
 ## Authentication
 
-The desktop app reuses an existing GitHub CLI sign-in:
+The desktop app reuses an existing GitHub CLI sign-in. You only need to connect once:
 
 1. Install GitHub CLI from [cli.github.com](https://cli.github.com/).
 2. Run `gh auth login` once and sign in to GitHub.
-3. In the Diagnostics window, choose **Send report**.
+3. In the Diagnostics window, choose **Send report**. If GitHub CLI is missing, DroidBox opens its download page. If it is installed but not signed in, DroidBox offers to launch the browser-based GitHub sign-in.
 
 DroidBox retrieves the GitHub CLI-managed authentication token at send time and keeps it in memory only for the upload. It does not ask the user to paste a token, store a token in settings, embed a token in the executable, or send credentials to the repository. The GitHub account must be able to create issues in the repository. If permission is insufficient, the app explains the required sign-in refresh.
 
