@@ -55,9 +55,20 @@ public partial class DiagnosticsWindow : Window
     }
     private static string ExplainLine(string line)
     {
-        if (line.Contains("[stderr]", StringComparison.OrdinalIgnoreCase)) return "RUNTIME ERROR OUTPUT  ·  " + StripPrefix(line);
-        if (line.Contains("[stdout]", StringComparison.OrdinalIgnoreCase)) return "RUNTIME OUTPUT  ·  " + StripPrefix(line);
-        if (line.Contains("[droidbox]", StringComparison.OrdinalIgnoreCase)) return "DROIDBOX  ·  " + StripPrefix(line);
+        var message = StripPrefix(line);
+        if (line.Contains("[stderr]", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("fatal", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("exception", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("failed", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("error", StringComparison.OrdinalIgnoreCase))
+            return "ERROR  ·  " + message;
+        if (message.Contains("warning", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("warn:", StringComparison.OrdinalIgnoreCase))
+            return "WARNING  ·  " + message;
+        if (line.Contains("[stdout]", StringComparison.OrdinalIgnoreCase))
+            return "INFO  ·  " + message;
+        if (line.Contains("[droidbox]", StringComparison.OrdinalIgnoreCase))
+            return "DROIDBOX  ·  " + message;
         return line;
     }
     private static string StripPrefix(string line)
@@ -75,8 +86,8 @@ public partial class DiagnosticsWindow : Window
         {
             var matchLevel = selected switch
             {
-                "Errors only" => line.Contains("ERROR", StringComparison.OrdinalIgnoreCase) || line.Contains("stderr", StringComparison.OrdinalIgnoreCase) || line.Contains("failed", StringComparison.OrdinalIgnoreCase),
-                "Warnings" => line.Contains("warning", StringComparison.OrdinalIgnoreCase) || line.Contains("warn", StringComparison.OrdinalIgnoreCase),
+                "Errors only" => line.Contains("ERROR", StringComparison.OrdinalIgnoreCase),
+                "Warnings" => line.Contains("WARNING", StringComparison.OrdinalIgnoreCase),
                 "DroidBox only" => line.Contains("DROIDBOX", StringComparison.OrdinalIgnoreCase),
                 _ => true
             };
