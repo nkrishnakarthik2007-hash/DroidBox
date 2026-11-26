@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: droidbox-release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   release:
@@ -95,6 +95,7 @@ jobs:
 
       - name: Run native Windows Lunaria smoke test
         continue-on-error: true
+        timeout-minutes: 2
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
@@ -126,21 +127,6 @@ jobs:
           $stdoutTask = $process.StandardOutput.ReadToEndAsync()
           $stderrTask = $process.StandardError.ReadToEndAsync()
           Start-Sleep -Seconds 5
-          try {
-            Add-Type -AssemblyName System.Windows.Forms
-            Add-Type -AssemblyName System.Drawing
-            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-            if ($bounds.Width -gt 0 -and $bounds.Height -gt 0) {
-              $screen = [System.Drawing.Bitmap]::new($bounds.Width,$bounds.Height)
-              $graphics = [System.Drawing.Graphics]::FromImage($screen)
-              try {
-                $graphics.CopyFromScreen($bounds.Location,[System.Drawing.Point]::Empty,$bounds.Size)
-                $screen.Save((Join-Path $PWD "smoke-screen.png"),[System.Drawing.Imaging.ImageFormat]::Png)
-              } finally { $graphics.Dispose(); $screen.Dispose() }
-            }
-          } catch {
-            "Desktop screenshot unavailable: $($_.Exception.Message)" | Set-Content smoke-screen-capture.txt
-          }
           if (-not $process.WaitForExit(40000)) {
             "Runtime remained active for 45 seconds; stopping the smoke-test process." | Set-Content smoke-test-result.txt
             $process.Kill($true)
@@ -160,16 +146,11 @@ jobs:
             if (-not $runtimeLog.Contains($signal)) { throw "Lunaria smoke test did not reach required startup stage: $signal" }
           }
           "PASS: EGL initialised, Android Activity reached onResume, and the guest UI document was parsed." | Add-Content smoke-test-result.txt
-          if (Test-Path smoke-screen.png) {
-            "A Windows desktop screenshot was captured as smoke-screen.png." | Add-Content smoke-test-result.txt
-          } else {
-            "The runner did not provide a capturable desktop surface; startup logs are the available validation." | Add-Content smoke-test-result.txt
-          }
           $captured = @(Get-ChildItem $frames -Filter *.png -ErrorAction SilentlyContinue)
           if ($captured.Count -gt 0) {
             "Captured $($captured.Count) guest frame image(s)." | Add-Content smoke-test-result.txt
           } else {
-            "Guest-frame dump was unavailable on this Windows run; no frame files were emitted." | Add-Content smoke-test-result.txt
+            "Guest-frame dump was unavailable on this Windows run; runtime startup and UI lifecycle logs are the available validation." | Add-Content smoke-test-result.txt
           }
 
       - name: Upload native Windows smoke-test logs and frames
@@ -182,8 +163,6 @@ jobs:
             smoke-stdout.log
             smoke-stderr.log
             smoke-frames/
-            smoke-screen.png
-            smoke-screen-capture.txt
           if-no-files-found: ignore
           retention-days: 14
 
