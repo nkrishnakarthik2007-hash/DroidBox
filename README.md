@@ -13,7 +13,7 @@ The intended user experience is a normal Windows application:
 - A local APK library with Add app, searchable app tiles, package details and launch actions.
 - Runtime components managed by DroidBox; ordinary users should not need to browse for an executable.
 - Understandable status messages and a dedicated diagnostics window with search, error/warning filters, copy and open-folder actions.
-- NKK branding across the app, Start menu, taskbar, installer and feedback page.
+- NKK branding across the app, Start menu, taskbar, multi-resolution Windows icon, installer and feedback page.
 - Optional advanced runtime settings for developers and testers.
 
 ## Current status — Preview
@@ -25,7 +25,7 @@ The intended user experience is a normal Windows application:
 - Source inspection of the exact bundled Stubuika release (`stubuika-v2026.11.08`) shows that its Windows native-display helper intentionally returns null, while the desktop EGL path treats that value as fatal. This is a likely Windows-specific blocker; a native Windows EGL/HWND smoke test is still required.
 - APK execution is not sandboxed. Only use APKs you trust.
 
-## Runtime and open-source acknowledgements
+## Diagnostic reporting\n\nDroidBox can submit a sanitized diagnostic report to the public GitHub repository after explicit confirmation. It reuses a GitHub CLI sign-in, never embeds a token in the app, and does not upload APK files. Reports create public issues. See [diagnostic reporting details](docs/DIAGNOSTIC-REPORTING.md).\n\n## Runtime and open-source acknowledgements
 
 DroidBox currently evaluates [Stubuika](https://github.com/flessan/stubuika), a downstream fork of [Lunaria](https://github.com/yui0/lunaria). Stubuika is distributed under the **Mozilla Public License 2.0 (MPL-2.0)**. If Stubuika files are bundled or modified, preserve the upstream copyright and licence notices and make the corresponding MPL-covered source available as required by the licence. Third-party libraries and fonts retain their own licences; see the bundled `licenses/` directory in runtime packages.
 
