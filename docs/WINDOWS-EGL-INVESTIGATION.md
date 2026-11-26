@@ -39,3 +39,23 @@ Do not pass a made-up display pointer, cast the HWND into an EGL display, or sil
 This finding is not yet a confirmed runtime fix. The packaged Windows runtime has not passed native Windows display/rendering validation. Do not claim APK execution works until an APK visibly renders end-to-end.
 
 DroidBox should carry any Stubuika modifications in a clearly identified fork/patch set, preserve MPL-2.0 notices, and publish corresponding source for MPL-covered modifications. Do not silently alter or misrepresent upstream Stubuika.
+
+## Re-check against newer upstream Lunaria — 2026-11-26
+
+The first Stubuika hypothesis is now confirmed at source level for the exact bundled release:
+
+- Stubuika stubuika-v2026.11.08 calls luna_os_native_display() and explicitly aborts when it returns NULL.
+- Its Windows implementation returns NULL because Windows has no X11/Wayland display connection.
+- The window path therefore exits before trying EGL's default display on Windows.
+
+The newer upstream Project Lunaria release 2026.11.24 changes this path: it passes the Windows native-display value through to eglGetDisplay() without the explicit null rejection. On Windows, the null value is the EGL default-display handle. It still obtains the real Win32 HWND from GLFW for eglCreateWindowSurface().
+
+This is a meaningful upstream fix candidate and the reason DroidBox now packages Lunaria 2026.11.24 instead of the older Stubuika 2026.11.08 build. The launch argument is the package path itself (lunaria.exe <package>); the previous DroidBox command-line shape was already consistent with upstream usage.
+
+**Validation boundary:** source comparison is not a Windows rendering test. The new runtime must still be exercised on a native Windows desktop with a known-good APK. Capture the first EGL failure stage, EGL error, GPU/driver and visible-window result. Do not mark the runtime fixed until an actual app frame appears and accepts input.
+
+Sources:
+- https://github.com/flessan/stubuika/blob/stubuika-v2026.11.08/src/luna_boot.c
+- https://github.com/yui0/lunaria/blob/2026.11.24/src/luna_boot.c
+- https://github.com/yui0/lunaria/blob/2026.11.24/src/lunaria_windows.c
+- https://github.com/yui0/lunaria/releases/tag/2026.11.24
