@@ -65,6 +65,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 - [x] App library: import APKs into local app storage, persist entries, search, select and remove apps
 - [x] Human-readable logs and a dedicated diagnostics view
 - [x] GitHub Pages feedback form and structured issue template
+- [x] Configure NKK branding for the Velopack installer and Start menu shortcuts (release workflow verification pending)
 - [ ] Fix Stubuika Windows EGL/display initialisation and framework resources
 - [ ] Verify a simple APK end-to-end before claiming app execution
 - [ ] Extract and display each APK's actual launcher icon and app label
