@@ -121,7 +121,7 @@ jobs:
           $env:LUNARIA_CACHE_DIR = $cache
           $env:LUNARIA_DUMP_DIR = $frames
           $env:LUNARIA_DUMP_FRAME = "0,60,120"
-          $env:LUNARIA_COMP_SHOT_S = "0.05"
+          $env:LUNARIA_COMP_SHOT_S = "1"
           $psi = [System.Diagnostics.ProcessStartInfo]::new()
           $psi.FileName = $runtime.FullName
           $psi.WorkingDirectory = $runtime.Directory.FullName
@@ -135,9 +135,9 @@ jobs:
           $process = [System.Diagnostics.Process]::Start($psi)
           $stdoutTask = $process.StandardOutput.ReadToEndAsync()
           $stderrTask = $process.StandardError.ReadToEndAsync()
-          Start-Sleep -Seconds 5
-          if (-not $process.WaitForExit(40000)) {
-            "Runtime remained active for 45 seconds; stopping the smoke-test process." | Set-Content smoke-test-result.txt
+          Start-Sleep -Seconds 2
+          if (-not $process.WaitForExit(6000)) {
+            "Runtime remained active for 8 seconds; stopping the smoke-test process." | Set-Content smoke-test-result.txt
             $process.Kill($true)
             $process.WaitForExit()
           } else {
