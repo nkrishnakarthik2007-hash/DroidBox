@@ -42,7 +42,7 @@ dotnet run
 
 ## Feedback
 
-Use the [DroidBox feedback page](https://nkrishnakarthik2007-hash.github.io/DroidBox/feedback/) to report installation experience, compatibility problems and feature requests. Feedback opens a GitHub issue so reports can be tracked publicly. Do not include passwords, private APKs, personal files or other sensitive information.
+Use the [DroidBox feedback page](https://nkrishnakarthik2007-hash.github.io/DroidBox/) to report installation experience, compatibility problems and feature requests. Feedback opens a GitHub issue so reports can be tracked publicly. Do not include passwords, private APKs, personal files or other sensitive information.
 
 ## Development rules — update documentation with every change
 
