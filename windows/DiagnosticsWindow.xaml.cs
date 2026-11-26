@@ -94,14 +94,18 @@ public partial class DiagnosticsWindow : Window
     {
         var message = StripPrefix(line);
         if (line.Contains("[stderr]", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("[ERROR]", StringComparison.OrdinalIgnoreCase)
             || message.Contains("fatal", StringComparison.OrdinalIgnoreCase)
             || message.Contains("exception", StringComparison.OrdinalIgnoreCase)
             || message.Contains("failed", StringComparison.OrdinalIgnoreCase)
             || message.Contains("error", StringComparison.OrdinalIgnoreCase))
             return "ERROR  ·  " + message;
-        if (message.Contains("warning", StringComparison.OrdinalIgnoreCase)
+        if (message.Contains("[WARN]", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("warning", StringComparison.OrdinalIgnoreCase)
             || message.Contains("warn:", StringComparison.OrdinalIgnoreCase))
             return "WARNING  ·  " + message;
+        if (message.Contains("[INFO]", StringComparison.OrdinalIgnoreCase))
+            return "INFO  ·  " + message;
         if (line.Contains("[stdout]", StringComparison.OrdinalIgnoreCase))
             return "INFO  ·  " + message;
         if (line.Contains("[droidbox]", StringComparison.OrdinalIgnoreCase))
