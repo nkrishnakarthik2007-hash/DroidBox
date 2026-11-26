@@ -887,7 +887,11 @@ public partial class MainWindow : Window
                 : "Runtime package is not present in this preview build.";
             UpdateRunButton();
         }
-        catch { RuntimePathText.Text = "Could not locate the managed runtime package."; }
+        catch (Exception ex)
+        {
+            AppLog.Error("Could not load the managed Android runtime settings.", ex);
+            RuntimePathText.Text = "Could not locate the managed runtime package.";
+        }
     }
     private void SaveRuntimeSettings()
     {
@@ -898,6 +902,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLog.Error("Could not save Android runtime settings.", ex);
             MessageBox.Show("Runtime selected, but settings could not be saved: " + ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
