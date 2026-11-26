@@ -506,6 +506,7 @@ public partial class MainWindow : Window
             var data = json.RootElement;
             string Read(string key) => data.TryGetProperty(key, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : "—";
             var package = Read("package");
+            var appLabel = Read("application_label");
             var version = Read("version_name");
             var minSdk = Read("min_sdk");
             var targetSdk = Read("target_sdk");
@@ -516,6 +517,9 @@ public partial class MainWindow : Window
             if (AppLibraryList.SelectedItem is ApkLibraryEntry selectedEntry && string.Equals(selectedEntry.ApkPath, apkPath, StringComparison.OrdinalIgnoreCase))
             {
                 selectedEntry.PackageSummary = package;
+                if (appLabel != "—" && !appLabel.StartsWith("@", StringComparison.Ordinal))
+                    selectedEntry.DisplayName = appLabel;
+                SelectedAppTitle.Text = selectedEntry.DisplayName;
                 _appView?.Refresh();
                 SaveAppLibrary();
             }
