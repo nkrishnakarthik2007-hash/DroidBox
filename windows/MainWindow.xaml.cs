@@ -35,7 +35,6 @@ public partial class MainWindow : Window
     private ICollectionView? _appView;
     private static string LibraryDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Apps");
     private static string LibraryIndexPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "apps.json");
-    private static string FirstRunMarker => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "feedback-opened.txt");
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
     protected override void OnSourceInitialized(EventArgs e)
@@ -131,26 +130,6 @@ public partial class MainWindow : Window
         LoadAppLibrary();
         LoadRuntimeSettings();
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
-        Loaded += async (_, _) => await OpenFirstRunFeedbackAsync();
-    }
-
-    private async Task OpenFirstRunFeedbackAsync()
-    {
-        try
-        {
-            await Task.Delay(1800);
-            _updateManager ??= new UpdateManager(
-                new GithubSource("https://github.com/nkrishnakarthik2007-hash/DroidBox", accessToken: null, prerelease: false));
-            if (!_updateManager.IsInstalled || File.Exists(FirstRunMarker)) return;
-            var url = "https://nkrishnakarthik2007-hash.github.io/DroidBox/";
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            Directory.CreateDirectory(Path.GetDirectoryName(FirstRunMarker)!);
-            File.WriteAllText(FirstRunMarker, DateTimeOffset.UtcNow.ToString("O"));
-        }
-        catch
-        {
-            // Feedback is optional; a browser or network problem must never block startup.
-        }
     }
 
     private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
