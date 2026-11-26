@@ -1,6 +1,6 @@
 # Diagnostic reporting
 
-DroidBox writes runtime stdout/stderr to the local per-user log folder:
+DroidBox writes application startup, update, inspection, error, and runtime stdout/stderr logs to the local per-user log folder:
 
 `%LOCALAPPDATA%\DroidBox\Logs`
 
@@ -8,7 +8,7 @@ The Diagnostics window can create a GitHub issue in the public NKK DroidBox repo
 
 ## What is sent
 
-- Up to five recent DroidBox runtime log files, bounded to keep the report small.
+- Up to five recent DroidBox application and runtime log files, bounded to keep the report small.
 - Windows version string, process architecture, .NET version and DroidBox file version.
 - A timestamp and the log filenames.
 
@@ -31,5 +31,7 @@ The desktop app reuses an existing GitHub CLI sign-in. You only need to connect 
 DroidBox retrieves the GitHub CLI-managed authentication token at send time and keeps it in memory only for the upload. It does not ask the user to paste a token, store a token in settings, embed a token in the executable, or send credentials to the repository. The GitHub account must be able to create issues in the repository. If permission is insufficient, the app explains the required sign-in refresh.
 
 ## ChatGPT development workflow
+
+After the user explicitly sends a report, the public GitHub issue becomes the shared diagnostic record. The connected GitHub integration can retrieve it in a later development session. Logs are not silently uploaded.
 
 The issue is stored in the repository and can be inspected through the connected GitHub integration during the next development session. GitHub issue creation does not itself push a live notification into an already-open ChatGPT conversation; the report provides a stable link and shared source of truth for continued debugging.
