@@ -17,7 +17,7 @@ public partial class DiagnosticsWindow : Window
     private async void SendReport_Click(object sender, RoutedEventArgs e)
     {
         var answer = MessageBox.Show(
-            "DroidBox will create a PUBLIC GitHub issue in the NKK DroidBox repository. It includes recent runtime log text and basic Windows/.NET details. APK files are never uploaded; local user-profile paths and common token/password patterns are removed. Review the report on GitHub after it is created.\n\nSend this diagnostic report?",
+            "DroidBox will create a PUBLIC GitHub issue in the NKK DroidBox repository. It includes recent application-startup and Android-runtime logs plus basic Windows/.NET details. APK files are never uploaded; local user-profile paths and common token/password patterns are removed. Review the report on GitHub after it is created.\n\nSend this diagnostic report?",
             "Share diagnostics with NKK", MessageBoxButton.YesNo, MessageBoxImage.Information);
         if (answer != MessageBoxResult.Yes) return;
 
@@ -65,8 +65,8 @@ public partial class DiagnosticsWindow : Window
                 .OrderByDescending(File.GetLastWriteTimeUtc).Take(8).ToArray();
             if (files.Length == 0)
             {
-                _allText = "No runtime logs yet.\r\n\r\nWhen you test an APK, DroidBox records runtime output here.\r\nYou can return to this screen after a test.";
-                StatusText.Text = "No log files found · " + _directory;
+                _allText = "No application or runtime logs yet.\r\n\r\nDroidBox records startup, error, update and Android-runtime activity here automatically.";
+                StatusText.Text = "No diagnostic logs found · " + _directory;
             }
             else
             {
