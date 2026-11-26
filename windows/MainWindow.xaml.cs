@@ -8,6 +8,9 @@ using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Globalization;
 using Velopack;
 using Velopack.Sources;
 namespace DroidBox.Windows;
@@ -37,6 +40,24 @@ public partial class MainWindow : Window
         }
         catch { /* Native window effects are optional; keep the app usable on older Windows builds. */ }
     }
+    private static ImageSource CreateAppIcon()
+    {
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromRgb(91, 72, 207)), new Pen(new SolidColorBrush(Color.FromRgb(174, 153, 255)), 2), new Rect(2, 2, 60, 60), 17, 17);
+            var text = new FormattedText("N", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface(new FontFamily("Segoe UI Black"), FontStyles.Normal, FontWeights.Black, FontStretches.Normal),
+                39, Brushes.White, 1.0);
+            dc.DrawText(text, new Point((64 - text.Width) / 2, (64 - text.Height) / 2 - 1));
+            dc.DrawEllipse(new SolidColorBrush(Color.FromRgb(102, 244, 214)), null, new Point(51, 13), 4, 4);
+        }
+        var bitmap = new RenderTargetBitmap(64, 64, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        bitmap.Freeze();
+        return bitmap;
+    }
+
     private void MinimizeWindow_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void MaximizeWindow_Click(object sender, RoutedEventArgs e)
     {
@@ -48,6 +69,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Icon = CreateAppIcon();
         Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)));
         AppLibraryList.ItemsSource = _apps;
         LoadAppLibrary();
@@ -125,7 +147,7 @@ public partial class MainWindow : Window
     {
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0) ShowSelected(files[0]);
     }
-    private async void ShowSelected(string path)
+    private void ShowSelected(string path)
     {
         var info = new FileInfo(path);
         if (!info.Exists || !string.Equals(info.Extension, ".apk", StringComparison.OrdinalIgnoreCase))
@@ -161,6 +183,12 @@ public partial class MainWindow : Window
         {
             InspectStatus.Text = "Could not add this APK to your library: " + ex.Message;
         }
+    }
+
+    private void AppLibraryList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (AppLibraryList.SelectedItem is ApkLibraryEntry && RunAppButton.IsEnabled)
+            RunAppButton_Click(sender, new RoutedEventArgs());
     }
 
     private void AppLibraryList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
