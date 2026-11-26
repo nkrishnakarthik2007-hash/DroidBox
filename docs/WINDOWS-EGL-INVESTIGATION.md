@@ -8,10 +8,10 @@ The current Stubuika Windows platform layer implements `luna_os_native_display()
 
 This makes the Linux-style native-display handoff unsuitable for Windows. It is a stronger and more actionable lead than assuming a laptop GPU or driver defect.
 
-Upstream source inspected at commit `79194ef09802ee56ffd3b68328140f2265bf3690`:
-- [Windows platform implementation](https://github.com/flessan/stubuika/blob/79194ef09802ee56ffd3b68328140f2265bf3690/src/lunaria_windows.c) — `luna_os_native_display()` returns `NULL`; `luna_os_native_window()` returns the GLFW Win32 HWND.
-- [EGL startup path](https://github.com/flessan/stubuika/blob/79194ef09802ee56ffd3b68328140f2265bf3690/src/luna_boot.c) — the window path rejects a null native display before EGL setup.
-- [Upstream compatibility notes](https://github.com/flessan/stubuika/blob/79194ef09802ee56ffd3b68328140f2265bf3690/docs/compatibility.md) — Windows EGL/GLES initialization has been checked under Wine, but native Windows display and audio remain unverified.
+Upstream source inspected at the exact release tag currently bundled by DroidBox (`stubuika-v2026.11.08`):
+- [Windows platform implementation](https://github.com/flessan/stubuika/blob/stubuika-v2026.11.08/src/lunaria_windows.c) — `luna_os_native_display()` returns `NULL`; `luna_os_native_window()` returns the GLFW Win32 HWND.
+- [EGL startup path](https://github.com/flessan/stubuika/blob/stubuika-v2026.11.08/src/luna_boot.c) — the window path rejects a null native display before EGL setup.
+- [Upstream compatibility notes](https://github.com/flessan/stubuika/blob/stubuika-v2026.11.08/docs/compatibility.md) — Windows EGL/GLES initialization has been checked under Wine, but native Windows display and audio remain unverified.
 
 ## Correct direction to investigate
 
