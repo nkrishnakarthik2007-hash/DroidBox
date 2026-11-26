@@ -31,7 +31,7 @@ internal static class GitHubDiagnosticsUploader
 
         var token = auth.StdOut.Trim();
         var report = BuildReport(logDirectory);
-        var title = $"[DroidBox diagnostics] Runtime report · {DateTimeOffset.Now:yyyy-MM-dd HH:mm}";
+        var title = $"[DroidBox diagnostics] Application and runtime report · {DateTimeOffset.Now:yyyy-MM-dd HH:mm}";
         var payload = JsonSerializer.Serialize(new { title, body = report });
 
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(25) };
@@ -87,13 +87,13 @@ internal static class GitHubDiagnosticsUploader
         builder.AppendLine($"- DroidBox version: {Sanitize(GetAppVersion())}");
         builder.AppendLine();
 
-        builder.AppendLine("## Recent runtime logs");
+        builder.AppendLine("## Recent application and runtime logs");
         var files = Directory.Exists(logDirectory)
             ? Directory.GetFiles(logDirectory, "*.log").OrderByDescending(File.GetLastWriteTimeUtc).Take(5).ToArray()
             : [];
         if (files.Length == 0)
         {
-            builder.AppendLine("No runtime log files were found.");
+            builder.AppendLine("No application or runtime log files were found.");
         }
         else
         {
