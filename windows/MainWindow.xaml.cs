@@ -258,7 +258,7 @@ public partial class MainWindow : Window
             }
             if (string.IsNullOrWhiteSpace(existing.IconPath) || !File.Exists(existing.IconPath))
             {
-                existing.IconPath = ExtractPackageIcon(info.FullName, existing.Id);
+                existing.IconPath = ExtractPackageIcon(existing.ApkPath, existing.Id);
                 existing.Icon = LoadPackageIcon(existing.IconPath);
                 SaveAppLibrary();
             }
@@ -366,11 +366,22 @@ public partial class MainWindow : Window
         {
             if (!File.Exists(LibraryIndexPath)) return;
             var saved = JsonSerializer.Deserialize<List<ApkLibraryEntry>>(File.ReadAllText(LibraryIndexPath)) ?? new();
+            var iconsUpdated = false;
             foreach (var entry in saved.Where(a => !string.IsNullOrWhiteSpace(a.ApkPath) && File.Exists(a.ApkPath) && IsSupportedPackage(a.ApkPath)))
             {
+                if (string.IsNullOrWhiteSpace(entry.Id))
+                    entry.Id = Guid.NewGuid().ToString("N");
+                if (string.IsNullOrWhiteSpace(entry.IconPath) || !File.Exists(entry.IconPath))
+                {
+                    entry.IconPath = ExtractPackageIcon(entry.ApkPath, entry.Id);
+                    iconsUpdated |= !string.IsNullOrWhiteSpace(entry.IconPath);
+                }
                 entry.Icon = LoadPackageIcon(entry.IconPath);
+                if (entry.Icon is null)
+                    AppLog.Warning($"No displayable app icon is available for '{entry.DisplayName}' ({Path.GetFileName(entry.ApkPath)}).");
                 _apps.Add(entry);
             }
+            if (iconsUpdated) SaveAppLibrary();
             EmptyState.Visibility = _apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             AppCountText.Text = $"  ·  {_apps.Count} app{(_apps.Count == 1 ? "" : "s")}";
         }
