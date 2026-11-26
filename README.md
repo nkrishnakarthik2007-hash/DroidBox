@@ -22,6 +22,7 @@ The intended user experience is a normal Windows application:
 - A WPF .NET 8 Windows shell and GitHub release/update pipeline exist.
 - Stubuika is the experimental execution backend. Its Windows package has been tested for CLI diagnostics, but APK UI rendering is **not yet verified**.
 - Recent logs show that Stubuika creates a GLFW window but fails to obtain a native EGL display; framework resources are also missing in the tested package. Exit code 0 must not be interpreted as a successful app launch.
+- Source inspection of the current Stubuika Windows platform layer shows that its native-display helper intentionally returns null, while the desktop EGL path currently treats that value as fatal. This is a likely Windows-specific blocker; a native Windows EGL/HWND smoke test is still required.
 - APK execution is not sandboxed. Only use APKs you trust.
 
 ## Runtime and open-source acknowledgements
