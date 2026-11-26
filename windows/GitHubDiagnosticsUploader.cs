@@ -54,6 +54,28 @@ internal static class GitHubDiagnosticsUploader
             ?? throw new InvalidOperationException("GitHub accepted the report but did not return an issue link.");
     }
 
+    public static void StartGitHubConnection()
+    {
+        var gh = FindGitHubCli();
+        if (gh is null)
+        {
+            Process.Start(new ProcessStartInfo("https://cli.github.com/") { UseShellExecute = true });
+            return;
+        }
+
+        var start = new ProcessStartInfo(gh)
+        {
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Normal
+        };
+        start.ArgumentList.Add("auth");
+        start.ArgumentList.Add("login");
+        start.ArgumentList.Add("--hostname");
+        start.ArgumentList.Add("github.com");
+        start.ArgumentList.Add("--web");
+        Process.Start(start);
+    }
+
     private static string BuildReport(string logDirectory)
     {
         var builder = new StringBuilder();
