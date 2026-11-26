@@ -457,16 +457,8 @@ public partial class MainWindow : Window
     }
     private void OpenRuntimeLogsButton_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            var logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Logs");
-            Directory.CreateDirectory(logDirectory);
-            Process.Start(new ProcessStartInfo("explorer.exe", logDirectory) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Could not open runtime logs", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
+        var diagnostics = new DiagnosticsWindow { Owner = this };
+        diagnostics.ShowDialog();
     }
     private void StopRuntimeButton_Click(object sender, RoutedEventArgs e)
     {
