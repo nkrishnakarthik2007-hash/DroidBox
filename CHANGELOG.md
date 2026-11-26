@@ -5,6 +5,11 @@ All notable DroidBox changes are documented here. New changes must be added at t
 ## [Unreleased]
 
 ### Added
+- Added a dedicated diagnostics window with readable log labels, search, error/warning filters, copy and open-folder actions.
+- Added an NKK-branded title bar with minimise, maximise/restore and close controls.
+- Added a reproducible NKK DroidBox `.ico` generator and embedded the generated icon in the Windows executable.
+- Added a matching NKK monogram icon to the running app's taskbar/window identity.
+- Added double-click launch from the local APK library.
 - Added a persistent local APK library with import, selection and removal actions. Imported APKs are copied into the DroidBox app-data folder; removing an entry deletes only the managed copy, not the original source APK.
 - Added a GitHub Actions workflow to deploy the feedback form to GitHub Pages.
 
