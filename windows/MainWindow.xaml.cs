@@ -144,7 +144,6 @@ public partial class MainWindow : Window
         _appView = CollectionViewSource.GetDefaultView(_apps);
         _appView.SortDescriptions.Add(new SortDescription(nameof(ApkLibraryEntry.DisplayName), ListSortDirection.Ascending));
         AppLibraryList.ItemsSource = _appView;
-        DockApps.ItemsSource = _apps;
         LoadAppLibrary();
         LoadRuntimeSettings();
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
