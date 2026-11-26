@@ -503,6 +503,7 @@ public partial class MainWindow : Window
                 StopRuntimeButton.IsEnabled = false;
                 UpdateRunButton();
                 InspectStatus.Text = exitCode == 0 ? $"Runtime process ended normally, but this does not confirm that the Android app rendered. Open readable diagnostics. Log: {logPath}" : $"Runtime failed (exit code {exitCode}). Open diagnostics for the cause. Log: {logPath}";
+                if (exitCode != 0) _ = OfferDiagnosticsUploadAsync();
                 process.Dispose();
             });
             if (!process.Start())
@@ -525,6 +526,29 @@ public partial class MainWindow : Window
             MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+    private async Task OfferDiagnosticsUploadAsync()
+    {
+        var answer = MessageBox.Show(
+            "The Android runtime exited with an error. Would you like DroidBox to send a sanitized diagnostic report to NKK on GitHub? The report creates a public issue; APK files are never uploaded.",
+            "Runtime error detected", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes) return;
+        try
+        {
+            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Logs");
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+            var url = await GitHubDiagnosticsUploader.SendLatestAsync(directory, timeout.Token);
+            InspectStatus.Text = "Diagnostic report sent · " + url;
+            if (MessageBox.Show("Report sent successfully. Open it on GitHub?", "DroidBox diagnostics", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            InspectStatus.Text = "Automatic report was not sent · " + ex.Message;
+            MessageBox.Show(ex.Message + "\\n\\nIf GitHub CLI is not installed, install it from https://cli.github.com/ and run 'gh auth login' once.",
+                "DroidBox diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
     private void OpenRuntimeLogsButton_Click(object sender, RoutedEventArgs e)
     {
         var diagnostics = new DiagnosticsWindow { Owner = this };
