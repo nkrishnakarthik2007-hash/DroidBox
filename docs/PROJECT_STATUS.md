@@ -9,7 +9,7 @@ Last reviewed: 2026-11-27
 - Release page: https://github.com/nkrishnakarthik2007-hash/DroidBox/releases/tag/v0.1.93
 
 ## Current review
-- Draft PR #9, `Fix startup handover, persistent logs and APK icon handling`, remains open and is not part of the published v0.1.93 release.
+- Draft PR #9, `Fix startup handover, persistent logs and APK icon handling`, remains open and is not part of the published v0.1.93 release. GitHub currently reports the PR as `dirty` (merge conflicts), so it must be reconciled with the latest main branch before it can be merged.
 - PR-head CI was reported successful for Python inspector tests, Windows shell build, and the release workflow's build checks.
 - The PR adds persistent app logs, safer splash-to-window handover, more APK icon formats, icon backfill, a visible Diagnostics entry, and a final-frame runtime smoke assertion.
 - Diagnostic reports remain user-approved; the report creates a public GitHub issue, so users must review the contents before sending.
