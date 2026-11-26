@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Diagnostics;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Runtime.InteropServices;
@@ -18,6 +19,9 @@ public partial class MainWindow : Window
     private Process? _activeRuntimeProcess;
     private UpdateManager? _updateManager;
     private bool _updateCheckRunning;
+    private readonly ObservableCollection<ApkLibraryEntry> _apps = new();
+    private static string LibraryDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Apps");
+    private static string LibraryIndexPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "apps.json");
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
     protected override void OnSourceInitialized(EventArgs e)
@@ -45,6 +49,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)));
+        AppLibraryList.ItemsSource = _apps;
+        LoadAppLibrary();
         LoadRuntimeSettings();
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
     }
@@ -127,18 +133,104 @@ public partial class MainWindow : Window
             MessageBox.Show("Please select a valid APK file.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+        try
+        {
+            Directory.CreateDirectory(LibraryDirectory);
+            var existing = _apps.FirstOrDefault(a => string.Equals(a.OriginalPath, info.FullName, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(a.ApkPath, info.FullName, StringComparison.OrdinalIgnoreCase));
+            if (existing is null)
+            {
+                var safeName = Path.GetFileName(info.Name);
+                var destination = Path.Combine(LibraryDirectory, safeName);
+                if (File.Exists(destination)) destination = Path.Combine(LibraryDirectory, $"{Path.GetFileNameWithoutExtension(safeName)}-{Guid.NewGuid():N}"[..Math.Min(Path.GetFileNameWithoutExtension(safeName).Length + 9, Path.GetFileNameWithoutExtension(safeName).Length + 9)] + ".apk");
+                File.Copy(info.FullName, destination, overwrite: false);
+                existing = new ApkLibraryEntry { Id = Guid.NewGuid().ToString("N"), DisplayName = Path.GetFileNameWithoutExtension(info.Name), ApkPath = destination, OriginalPath = info.FullName, PackageSummary = "Inspecting package…" };
+                _apps.Add(existing);
+                SaveAppLibrary();
+            }
+            AppLibraryList.SelectedItem = existing;
+            AppLibraryList.ScrollIntoView(existing);
+            _selectedApkPath = existing.ApkPath;
+            UpdateRunButton();
+            FileInfoText.Text = $"{FormatSize(new FileInfo(existing.ApkPath).Length)} · Stored in DroidBox library";
+            InspectStatus.Text = "Inspecting package metadata. APK code is not executed during inspection.";
+            MetadataText.Text = "";
+            await InspectAsync(existing.ApkPath, _inspection?.Token ?? CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            InspectStatus.Text = "Could not add this APK to your library: " + ex.Message;
+        }
+    }
+
+    private void AppLibraryList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry) return;
         _inspection?.Cancel();
         _inspection?.Dispose();
         _inspection = new CancellationTokenSource();
-        _selectedApkPath = info.FullName;
+        _selectedApkPath = entry.ApkPath;
         UpdateRunButton();
-        FileNameText.Text = info.Name;
-        FileInfoText.Text = $"{FormatSize(info.Length)} • Selected locally";
-        InspectStatus.Text = "Inspecting package metadata (no APK code is executed)…";
+        FileInfoText.Text = File.Exists(entry.ApkPath) ? $"{FormatSize(new FileInfo(entry.ApkPath).Length)} · Stored in DroidBox library" : "APK file is missing. Remove and add it again.";
+        InspectStatus.Text = "Reading app details…";
         MetadataText.Text = "";
-        SelectedPanel.Visibility = Visibility.Visible;
-        await InspectAsync(path, _inspection.Token);
+        if (File.Exists(entry.ApkPath)) _ = InspectAsync(entry.ApkPath, _inspection.Token);
     }
+
+    private void RemoveAppButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry) return;
+        var answer = MessageBox.Show($"Remove {entry.DisplayName} from the DroidBox library? The original APK file on your PC will not be deleted.", "Remove app", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes) return;
+        _apps.Remove(entry);
+        if (string.Equals(_selectedApkPath, entry.ApkPath, StringComparison.OrdinalIgnoreCase)) _selectedApkPath = null;
+        try { if (File.Exists(entry.ApkPath)) File.Delete(entry.ApkPath); } catch { }
+        SaveAppLibrary();
+        FileInfoText.Text = "Select an app from your library, or add another APK.";
+        InspectStatus.Text = "";
+        MetadataText.Text = "";
+        UpdateRunButton();
+    }
+
+    private void LoadAppLibrary()
+    {
+        try
+        {
+            if (!File.Exists(LibraryIndexPath)) return;
+            var saved = JsonSerializer.Deserialize<List<ApkLibraryEntry>>(File.ReadAllText(LibraryIndexPath)) ?? new();
+            foreach (var entry in saved.Where(a => !string.IsNullOrWhiteSpace(a.ApkPath) && File.Exists(a.ApkPath)))
+                _apps.Add(entry);
+        }
+        catch
+        {
+            InspectStatus.Text = "Your saved app list could not be read. APK files have not been deleted.";
+        }
+    }
+
+    private void SaveAppLibrary()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(LibraryIndexPath)!);
+            var temporary = LibraryIndexPath + ".tmp";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(_apps.ToList(), new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temporary, LibraryIndexPath, overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("DroidBox could not save the app library: " + ex.Message, "App library", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private sealed class ApkLibraryEntry
+    {
+        public string Id { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string PackageSummary { get; set; } = "";
+        public string ApkPath { get; set; } = "";
+        public string OriginalPath { get; set; } = "";
+    }
+
     private async Task InspectAsync(string apkPath, CancellationToken cancellationToken)
     {
         Process? activeProcess = null;
@@ -195,7 +287,13 @@ public partial class MainWindow : Window
             var activities = data.TryGetProperty("activities", out var a) && a.ValueKind == JsonValueKind.Array ? a.GetArrayLength() : 0;
             var dex = data.TryGetProperty("dex_files", out var d) && d.ValueKind == JsonValueKind.Array ? d.GetArrayLength() : 0;
             var libs = data.TryGetProperty("native_libraries", out var l) && l.ValueKind == JsonValueKind.Array ? l.GetArrayLength() : 0;
-            InspectStatus.Text = "Metadata inspection completed. Select a runtime to test actual execution.";
+            if (AppLibraryList.SelectedItem is ApkLibraryEntry selectedEntry && string.Equals(selectedEntry.ApkPath, apkPath, StringComparison.OrdinalIgnoreCase))
+            {
+                selectedEntry.PackageSummary = package;
+                AppLibraryList.Items.Refresh();
+                SaveAppLibrary();
+            }
+            InspectStatus.Text = "Package details loaded. Select Launch to test this APK.";
             MetadataText.Text = $"Package: {package}\nVersion: {version}\nSDK: min {minSdk} / target {targetSdk}\nPermissions: {permissions} • Activities: {activities}\nDEX files: {dex} • Native libraries: {libs}";
         }
         catch (OperationCanceledException)
