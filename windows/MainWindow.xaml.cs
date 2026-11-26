@@ -138,16 +138,21 @@ public partial class MainWindow : Window
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "settings.json");
     public MainWindow()
     {
+        AppLog.Info("MainWindow constructor started.");
         InitializeComponent();
+        AppLog.Info("MainWindow XAML initialized.");
         Icon = CreateAppIcon();
-        Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)));
+        Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0.96, 1, TimeSpan.FromMilliseconds(220)));
         _appView = CollectionViewSource.GetDefaultView(_apps);
         _appView.SortDescriptions.Add(new SortDescription(nameof(ApkLibraryEntry.DisplayName), ListSortDirection.Ascending));
         _appView.Filter = FilterApp;
         AppLibraryList.ItemsSource = _appView;
         DockApps.ItemsSource = _apps;
+        AppLog.Info("Loading saved APK library.");
         LoadAppLibrary();
+        AppLog.Info("Loading runtime settings.");
         LoadRuntimeSettings();
+        AppLog.Info("Launcher constructor completed.");
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
     }
 
@@ -165,13 +170,15 @@ public partial class MainWindow : Window
 
             if (!_updateManager.IsInstalled)
             {
-                UpdateStatusText.Text = "Automatic updates activate after installing DroidBox Setup.";
+                AppLog.Info("Update check skipped: this copy is not installed by Velopack.");
+                UpdateStatusText.Text = "Install the Setup version to enable in-app updates.";
                 if (showNoUpdates)
-                    MessageBox.Show("This is a portable preview. Install DroidBox using the Setup installer from GitHub Releases to enable automatic updates.", "DroidBox updates", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("This is a portable preview. Install the DroidBox Setup version from GitHub Releases to enable automatic in-app updates.", "DroidBox updates", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             UpdateStatusText.Text = "Checking GitHub for updates…";
+            AppLog.Info("Checking the public DroidBox GitHub Releases feed.");
             var update = await _updateManager.CheckForUpdatesAsync();
             if (update is null)
             {
@@ -182,26 +189,31 @@ public partial class MainWindow : Window
             }
 
             var version = update.TargetFullRelease.Version.ToString();
-            // Download in the background automatically; only ask before restarting the user's app.
-            UpdateStatusText.Text = $"DroidBox {version} found. Downloading update… 0%";
+            AppLog.Info($"Update {version} is available. Starting in-app download.");
+            // Download inside DroidBox; only ask before restarting the user's app.
+            UpdateStatusText.Text = $"కొత్త update available · Downloading {version}… 0%";
             await _updateManager.DownloadUpdatesAsync(update, percent =>
                 Dispatcher.Invoke(() => UpdateStatusText.Text = $"Downloading update… {percent}%"));
 
+            AppLog.Info($"Update {version} downloaded and staged by Velopack.");
             var answer = MessageBox.Show(
-                $"DroidBox {version} has been downloaded. Restart now to finish updating? Your APKs, settings and logs are stored separately from application files.",
-                "DroidBox update ready", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                $"DroidBox {version} update downloaded. ఇన్‌స్టాల్ చేసుకో — restart now to install it? Your APKs, settings and logs are stored separately from application files.",
+                "కొత్త update అందుబాటులో ఉంది", MessageBoxButton.YesNo, MessageBoxImage.Information);
             if (answer == MessageBoxResult.Yes)
             {
                 UpdateStatusText.Text = "Applying update and restarting DroidBox…";
+                AppLog.Info($"User accepted update {version}; applying and restarting.");
                 _updateManager.ApplyUpdatesAndRestart(update.TargetFullRelease);
             }
             else
             {
-                UpdateStatusText.Text = $"Update {version} is ready. Restart DroidBox when convenient to apply it.";
+                UpdateStatusText.Text = $"Update {version} is ready. ఇన్‌స్టాల్ చేసుకో — restart DroidBox when convenient.";
+                AppLog.Info($"User postponed update {version}; it remains staged.");
             }
         }
         catch (Exception ex)
         {
+            AppLog.Error("In-app update check/download failed.", ex);
             UpdateStatusText.Text = "Update check unavailable. You can try again later.";
             if (showNoUpdates)
                 MessageBox.Show(ex.Message, "DroidBox update check failed", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -270,6 +282,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLog.Error($"Could not add Android package '{Path.GetFileName(path)}' to the library.", ex);
             InspectStatus.Text = "Could not add this APK to your library: " + ex.Message;
         }
     }
@@ -361,8 +374,9 @@ public partial class MainWindow : Window
             EmptyState.Visibility = _apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             AppCountText.Text = $"  ·  {_apps.Count} app{(_apps.Count == 1 ? "" : "s")}";
         }
-        catch
+        catch (Exception ex)
         {
+            AppLog.Error("Saved APK library could not be loaded. Original package files were left untouched.", ex);
             InspectStatus.Text = "Your saved app list could not be read. APK files have not been deleted.";
         }
     }
@@ -378,6 +392,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLog.Error("Could not save the APK library index.", ex);
             MessageBox.Show("DroidBox could not save the app library: " + ex.Message, "App library", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -399,43 +414,112 @@ public partial class MainWindow : Window
         try
         {
             using var archive = ZipFile.OpenRead(packagePath);
-            string? iconName = null;
-            var manifest = archive.GetEntry("manifest.json");
-            if (manifest is not null && manifest.Length <= 256 * 1024)
+            string? manifestIcon = null;
+            var bundleManifest = archive.GetEntry("manifest.json");
+            if (bundleManifest is not null && bundleManifest.Length <= 256 * 1024)
             {
-                using var stream = manifest.Open();
+                using var stream = bundleManifest.Open();
                 using var json = JsonDocument.Parse(stream);
                 if (json.RootElement.TryGetProperty("icon", out var iconValue))
-                    iconName = iconValue.GetString()?.Replace('\\', '/');
+                    manifestIcon = iconValue.GetString()?.Replace('\\', '/');
             }
 
-            ZipArchiveEntry? iconEntry = null;
-            if (!string.IsNullOrWhiteSpace(iconName) && !iconName.StartsWith('/') && !iconName.Split('/').Contains(".."))
-                iconEntry = archive.GetEntry(iconName);
-
-            if (iconEntry is null)
+            var candidates = new List<ZipArchiveEntry>();
+            if (!string.IsNullOrWhiteSpace(manifestIcon)
+                && !manifestIcon.StartsWith('/')
+                && !manifestIcon.Split('/').Contains(".."))
             {
-                iconEntry = archive.Entries
-                    .Where(e => e.Length > 0 && e.Length <= 2 * 1024 * 1024 &&
-                        e.FullName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) &&
-                        (e.FullName.Contains("/mipmap-", StringComparison.OrdinalIgnoreCase) ||
-                         e.FullName.Contains("/drawable-", StringComparison.OrdinalIgnoreCase) ||
-                         Path.GetFileName(e.FullName).Equals("icon.png", StringComparison.OrdinalIgnoreCase)))
-                    .OrderByDescending(e => e.FullName.Contains("xxxhdpi", StringComparison.OrdinalIgnoreCase))
-                    .ThenByDescending(e => e.Length)
-                    .FirstOrDefault();
+                var declared = archive.GetEntry(manifestIcon);
+                if (declared is not null) candidates.Add(declared);
             }
-            if (iconEntry is null || iconEntry.Length <= 0 || iconEntry.Length > 2 * 1024 * 1024) return null;
+
+            var imageEntries = archive.Entries
+                .Where(entry =>
+                {
+                    var extension = Path.GetExtension(entry.FullName);
+                    var isImage = extension.Equals(".png", StringComparison.OrdinalIgnoreCase)
+                        || extension.Equals(".webp", StringComparison.OrdinalIgnoreCase)
+                        || extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                        || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+                    var isResourceFolder = entry.FullName.Contains("/mipmap-", StringComparison.OrdinalIgnoreCase)
+                        || entry.FullName.Contains("/drawable-", StringComparison.OrdinalIgnoreCase)
+                        || entry.FullName.Contains("/drawable/", StringComparison.OrdinalIgnoreCase);
+                    var name = Path.GetFileNameWithoutExtension(entry.FullName);
+                    var isLauncherName = name.Contains("ic_launcher", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("app_icon", StringComparison.OrdinalIgnoreCase)
+                        || name.Equals("icon", StringComparison.OrdinalIgnoreCase);
+                    return isImage && entry.Length > 0 && entry.Length <= 2 * 1024 * 1024
+                        && (isResourceFolder || isLauncherName);
+                })
+                .OrderByDescending(entry =>
+                {
+                    var name = Path.GetFileNameWithoutExtension(entry.FullName);
+                    return name.Contains("ic_launcher_foreground", StringComparison.OrdinalIgnoreCase) ? 5
+                        : name.Contains("ic_launcher_round", StringComparison.OrdinalIgnoreCase) ? 4
+                        : name.Equals("ic_launcher", StringComparison.OrdinalIgnoreCase) ? 3
+                        : name.Contains("app_icon", StringComparison.OrdinalIgnoreCase) ? 2 : 1;
+                })
+                .ThenByDescending(entry => entry.FullName.Contains("xxxhdpi", StringComparison.OrdinalIgnoreCase))
+                .ThenByDescending(entry => entry.FullName.Contains("xxhdpi", StringComparison.OrdinalIgnoreCase))
+                .ThenByDescending(entry => entry.Length)
+                .ToList();
+
+            foreach (var entry in imageEntries)
+            {
+                if (!candidates.Any(candidate => candidate.FullName == entry.FullName))
+                    candidates.Add(entry);
+            }
+
+            if (candidates.Count == 0)
+            {
+                AppLog.Warning($"No supported PNG/WebP/JPEG app icon resource was found in '{Path.GetFileName(packagePath)}'.");
+                return null;
+            }
 
             var iconDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Icons");
             Directory.CreateDirectory(iconDirectory);
             var destination = Path.Combine(iconDirectory, appId + ".png");
-            using (var input = iconEntry.Open())
-            using (var output = File.Create(destination))
-                input.CopyTo(output);
-            return destination;
+
+            foreach (var candidate in candidates)
+            {
+                try
+                {
+                    using var input = candidate.Open();
+                    if (Path.GetExtension(candidate.FullName).Equals(".png", StringComparison.OrdinalIgnoreCase))
+                    {
+                        using var output = File.Create(destination);
+                        input.CopyTo(output);
+                    }
+                    else
+                    {
+                        // Windows Imaging Component may decode WebP/JPEG when the matching system codec is present.
+                        // Convert to PNG so the WPF launcher can display the extracted app icon consistently.
+                        var decoder = BitmapDecoder.Create(input, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                        if (decoder.Frames.Count == 0) continue;
+                        var encoder = new PngBitmapEncoder();
+                        encoder.Frames.Add(decoder.Frames[0]);
+                        using var output = File.Create(destination);
+                        encoder.Save(output);
+                    }
+
+                    AppLog.Info($"Extracted APK icon resource '{candidate.FullName}' from '{Path.GetFileName(packagePath)}'.");
+                    return destination;
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warning($"Skipped unreadable APK icon resource '{candidate.FullName}': {ex.GetType().Name}.");
+                    try { if (File.Exists(destination)) File.Delete(destination); } catch { }
+                }
+            }
+
+            AppLog.Warning($"APK contained candidate images but none could be decoded: '{Path.GetFileName(packagePath)}'.");
+            return null;
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            AppLog.Error($"APK icon extraction failed for '{Path.GetFileName(packagePath)}'.", ex);
+            return null;
+        }
     }
 
     private static ImageSource? LoadPackageIcon(string? path)
@@ -531,6 +615,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLog.Error($"APK metadata inspection failed for '{Path.GetFileName(apkPath)}'.", ex);
             InspectStatus.Text = "Inspector unavailable. Check Python installation.";
             MetadataText.Text = ex.Message.Length > 800 ? ex.Message[..800] : ex.Message;
         }
@@ -693,6 +778,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLog.Error("Could not start the Android runtime process.", ex);
             InspectStatus.Text = "Runtime launch failed.";
             MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Error);
         }
