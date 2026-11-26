@@ -114,7 +114,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $version = "0.1.${{ github.run_number }}"
-          vpk pack --packId NKK.DroidBox --packVersion $version --packDir artifacts/DroidBox-win-x64 --mainExe DroidBox.Windows.exe --outputDir artifacts/velopack --channel win
+          vpk pack --packId NKK.DroidBox --packTitle "NKK DroidBox" --packAuthors "NKK" --icon windows/Assets/DroidBox.ico --packVersion $version --packDir artifacts/DroidBox-win-x64 --mainExe DroidBox.Windows.exe --outputDir artifacts/velopack --channel win --shortcuts Desktop,StartMenuRoot
           if (-not (Test-Path "artifacts/velopack/releases.win.json")) { throw "Velopack release feed was not generated." }
           if (-not (Get-ChildItem "artifacts/velopack" -Filter "*Setup.exe")) { throw "Velopack installer was not generated." }
 
