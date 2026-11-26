@@ -70,6 +70,9 @@ jobs:
           $ErrorActionPreference = "Stop"
           $uri = "https://github.com/yui0/lunaria/releases/download/2026.11.24/lunaria-2026-11-24-windows-x86_64.zip"
           Invoke-WebRequest -Uri $uri -OutFile lunaria.zip
+          $expectedSha256 = "E505703FA8756AEC7B362CFB69B355FB49B79C31346B9D311BBD30917A8BEDCA"
+          $actualSha256 = (Get-FileHash lunaria.zip -Algorithm SHA256).Hash
+          if ($actualSha256 -ne $expectedSha256) { throw "Lunaria archive SHA-256 mismatch: $actualSha256" }
           if ((Get-Item lunaria.zip).Length -lt 10000000) { throw "Lunaria archive is unexpectedly small." }
           Expand-Archive lunaria.zip -DestinationPath runtime-source -Force
           $exe = Get-ChildItem runtime-source -Recurse -Filter lunaria.exe | Select-Object -First 1
