@@ -8,7 +8,7 @@ The Velopack package is branded **NKK DroidBox** and uses the generated seven-si
 
 ## Automatic updates
 
-When code is pushed to the `main` branch, GitHub Actions builds the WPF application, publishes a self-contained Windows x64 app, bundles the APK inspector and the experimental Lunaria Windows x64 runtime, packages a Velopack installer/update feed, and publishes a versioned GitHub Release.
+When code is pushed to the `main` branch, GitHub Actions builds the WPF application, publishes a self-contained Windows x64 app, bundles the APK inspector, Lunaria Windows x64 runtime and checksum-verified Android Platform 31 framework resources, packages a Velopack installer/update feed, and publishes a versioned GitHub Release.
 
 Installed copies check GitHub Releases at startup and have a **Check for updates** button. When an update is available, the user can download it and restart DroidBox to apply it.
 
@@ -39,7 +39,7 @@ DroidBox captures runtime stdout/stderr automatically. Open **Diagnostics & send
 
 ## Experimental runtime
 
-The bundled runtime is Project Lunaria 2026.11.24 (the current upstream release at the time of this build). It accepts APK, APKM, XAPK, APKS and AAB package paths. Native Windows display/audio behavior remains unverified upstream; the launcher can hand a package to the runtime, but visible rendering must be verified on a real Windows desktop. A process exit code of zero is not proof that an APK rendered. Native Windows end-to-end rendering must pass before DroidBox claims general APK execution.
+The bundled runtime is Project Lunaria 2026.11.24 (the current upstream release at the time of this build), together with unmodified Android SDK Platform 31 framework resources verified against Google's archive checksum. It accepts APK, APKM, XAPK, APKS and AAB package paths. Native Windows display/audio behavior remains unverified upstream; the launcher can hand a package to the runtime, but visible rendering must be verified on a real Windows desktop. A process exit code of zero is not proof that an APK rendered. Native Windows end-to-end rendering must pass before DroidBox claims general APK execution.
 
 The [DroidBox smoke-test APK workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/build-smoke-test-apk.yml) builds our small test application.
 
