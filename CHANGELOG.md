@@ -10,6 +10,7 @@ All notable DroidBox changes are documented here. New changes must be added at t
 - Added a reproducible NKK DroidBox `.ico` generator and embedded the generated icon in the Windows executable.
 - Added a matching NKK monogram icon to the running app's taskbar/window identity.
 - Added double-click launch from the local APK library.
+- Added a one-time post-install first-launch opening of the feedback page; this does not run in portable preview mode.
 - Added a persistent local APK library with import, selection and removal actions. Imported APKs are copied into the DroidBox app-data folder; removing an entry deletes only the managed copy, not the original source APK.
 - Added a GitHub Actions workflow to deploy the feedback form to GitHub Pages.
 
