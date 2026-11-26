@@ -544,8 +544,12 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             InspectStatus.Text = "Automatic report was not sent · " + ex.Message;
-            MessageBox.Show(ex.Message + "\n\nIf GitHub CLI is not installed, install it from https://cli.github.com/ and run 'gh auth login' once.",
-                "DroidBox diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (MessageBox.Show(ex.Message + "\n\nOpen GitHub setup/sign-in now?",
+                "GitHub connection needed", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            {
+                try { GitHubDiagnosticsUploader.StartGitHubConnection(); }
+                catch (Exception launchError) { InspectStatus.Text = "Could not open GitHub setup · " + launchError.Message; }
+            }
         }
     }
 
