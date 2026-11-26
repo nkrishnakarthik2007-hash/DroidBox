@@ -14,6 +14,39 @@ public partial class DiagnosticsWindow : Window
         RefreshLogs();
     }
     private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshLogs();
+    private async void SendReport_Click(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(
+            "DroidBox will create a PUBLIC GitHub issue in the NKK DroidBox repository. It includes recent runtime log text and basic Windows/.NET details. APK files are never uploaded; local user-profile paths and common token/password patterns are removed. Review the report on GitHub after it is created.\n\nSend this diagnostic report?",
+            "Share diagnostics with NKK", MessageBoxButton.YesNo, MessageBoxImage.Information);
+        if (answer != MessageBoxResult.Yes) return;
+
+        SendReportButton.IsEnabled = false;
+        StatusText.Text = "Preparing a sanitized report and connecting to GitHub…";
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+            var url = await GitHubDiagnosticsUploader.SendLatestAsync(_directory, timeout.Token);
+            StatusText.Text = "Report sent successfully · " + url;
+            var open = MessageBox.Show(
+                "Your diagnostic report was created. You do not need to download or copy any logs.\n\nOpen the GitHub report now?",
+                "Diagnostics sent", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (open == MessageBoxResult.Yes)
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Could not send report · " + ex.Message;
+            MessageBox.Show(
+                ex.Message + "\n\nGitHub CLI is used for secure sign-in. Install it from https://cli.github.com/ and run 'gh auth login' once if it is not already connected.",
+                "Could not send diagnostics", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            SendReportButton.IsEnabled = true;
+        }
+    }
+
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
     private void LevelFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
