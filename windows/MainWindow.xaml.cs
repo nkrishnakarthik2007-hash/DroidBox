@@ -1,6 +1,8 @@
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Data;
 using System.IO;
 using System.Text.Json;
 using System.Runtime.InteropServices;
@@ -23,6 +25,7 @@ public partial class MainWindow : Window
     private UpdateManager? _updateManager;
     private bool _updateCheckRunning;
     private readonly ObservableCollection<ApkLibraryEntry> _apps = new();
+    private ICollectionView? _appView;
     private static string LibraryDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Apps");
     private static string LibraryIndexPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "apps.json");
     private static string FirstRunMarker => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "feedback-opened.txt");
@@ -72,7 +75,10 @@ public partial class MainWindow : Window
         InitializeComponent();
         Icon = CreateAppIcon();
         Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)));
-        AppLibraryList.ItemsSource = _apps;
+        _appView = CollectionViewSource.GetDefaultView(_apps);
+        _appView.SortDescriptions.Add(new SortDescription(nameof(ApkLibraryEntry.DisplayName), ListSortDirection.Ascending));
+        _appView.Filter = FilterApp;
+        AppLibraryList.ItemsSource = _appView;
         LoadAppLibrary();
         LoadRuntimeSettings();
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
@@ -204,6 +210,21 @@ public partial class MainWindow : Window
         {
             InspectStatus.Text = "Could not add this APK to your library: " + ex.Message;
         }
+    }
+
+    private bool FilterApp(object item)
+    {
+        if (item is not ApkLibraryEntry app) return false;
+        var query = AppSearchBox?.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(query)) return true;
+        return app.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase)
+            || app.PackageSummary.Contains(query, StringComparison.OrdinalIgnoreCase)
+            || app.ApkPath.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void AppSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        _appView?.Refresh();
     }
 
     private void AppLibraryList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -339,7 +360,7 @@ public partial class MainWindow : Window
             if (AppLibraryList.SelectedItem is ApkLibraryEntry selectedEntry && string.Equals(selectedEntry.ApkPath, apkPath, StringComparison.OrdinalIgnoreCase))
             {
                 selectedEntry.PackageSummary = package;
-                AppLibraryList.Items.Refresh();
+                _appView?.Refresh();
                 SaveAppLibrary();
             }
             InspectStatus.Text = "Package details loaded. Select Launch to test this APK.";
