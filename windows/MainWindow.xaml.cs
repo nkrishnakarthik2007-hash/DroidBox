@@ -544,7 +544,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             InspectStatus.Text = "Automatic report was not sent · " + ex.Message;
-            MessageBox.Show(ex.Message + "\\n\\nIf GitHub CLI is not installed, install it from https://cli.github.com/ and run 'gh auth login' once.",
+            MessageBox.Show(ex.Message + "\n\nIf GitHub CLI is not installed, install it from https://cli.github.com/ and run 'gh auth login' once.",
                 "DroidBox diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
