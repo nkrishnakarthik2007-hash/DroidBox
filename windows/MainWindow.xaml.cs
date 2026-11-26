@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shell;
 using System.Globalization;
 using System.IO.Compression;
 using System.Text.Json.Serialization;
@@ -31,6 +32,8 @@ public partial class MainWindow : Window
     private Rect _windowedBounds;
     private WindowStyle _windowedStyle;
     private ResizeMode _windowedResizeMode;
+    private double _windowedCaptionHeight = 42;
+    private Thickness _windowedResizeBorder = new(7);
     private readonly ObservableCollection<ApkLibraryEntry> _apps = new();
     private ICollectionView? _appView;
     private static string LibraryDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Apps");
@@ -100,6 +103,15 @@ public partial class MainWindow : Window
             Width = SystemParameters.PrimaryScreenWidth;
             Height = SystemParameters.PrimaryScreenHeight;
             WindowChromeBar.Visibility = Visibility.Collapsed;
+            WindowRootGrid.RowDefinitions[0].Height = new GridLength(0);
+            var chrome = WindowChrome.GetWindowChrome(this);
+            if (chrome is not null)
+            {
+                _windowedCaptionHeight = chrome.CaptionHeight;
+                _windowedResizeBorder = chrome.ResizeBorderThickness;
+                chrome.CaptionHeight = 0;
+                chrome.ResizeBorderThickness = new Thickness(0);
+            }
             FullscreenControls.Visibility = Visibility.Collapsed;
             _isFullscreen = true;
         }
@@ -109,6 +121,13 @@ public partial class MainWindow : Window
             WindowStyle = _windowedStyle;
             ResizeMode = _windowedResizeMode;
             WindowChromeBar.Visibility = Visibility.Visible;
+            WindowRootGrid.RowDefinitions[0].Height = new GridLength(42);
+            var chrome = WindowChrome.GetWindowChrome(this);
+            if (chrome is not null)
+            {
+                chrome.CaptionHeight = _windowedCaptionHeight;
+                chrome.ResizeBorderThickness = _windowedResizeBorder;
+            }
             FullscreenControls.Visibility = Visibility.Collapsed;
             Left = _windowedBounds.Left; Top = _windowedBounds.Top;
             Width = _windowedBounds.Width; Height = _windowedBounds.Height;
