@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private UpdateManager? _updateManager;
     private bool _updateCheckRunning;
     private bool _isFullscreen;
+    private WindowState _windowedState = WindowState.Maximized;
     private Rect _windowedBounds;
     private WindowStyle _windowedStyle;
     private ResizeMode _windowedResizeMode;
@@ -82,7 +83,7 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.F11) { ToggleFullscreen(); e.Handled = true; return; }
         if (e.Key == Key.Escape && _isFullscreen) { ToggleFullscreen(); e.Handled = true; return; }
-        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.M)
+        if (_isFullscreen && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.M)
         {
             FullscreenControls.Visibility = FullscreenControls.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
             e.Handled = true;
@@ -92,6 +93,7 @@ public partial class MainWindow : Window
     {
         if (!_isFullscreen)
         {
+            _windowedState = WindowState;
             _windowedBounds = new Rect(Left, Top, Width, Height);
             _windowedStyle = WindowStyle;
             _windowedResizeMode = ResizeMode;
@@ -131,6 +133,7 @@ public partial class MainWindow : Window
             FullscreenControls.Visibility = Visibility.Collapsed;
             Left = _windowedBounds.Left; Top = _windowedBounds.Top;
             Width = _windowedBounds.Width; Height = _windowedBounds.Height;
+            WindowState = _windowedState;
             _isFullscreen = false;
         }
     }
