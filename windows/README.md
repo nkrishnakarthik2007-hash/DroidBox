@@ -2,7 +2,7 @@
 
 DroidBox by NKK is a Windows WPF application. The installable release is packaged with **Velopack** so installed copies can receive updates from this public GitHub repository.
 
-## Automatic updates
+## Installer, shortcuts and uninstall\n\nThe Velopack package is branded as **NKK DroidBox** and uses the generated NKK `.ico` for Setup.exe and update dialogs. It creates Desktop and Start menu shortcuts. Velopack registers the installed app for normal Windows uninstall management; users can remove it from **Settings → Apps → Installed apps**. The standard Setup.exe is intentionally a quick per-user installer and does not require administrator elevation.\n\n## Automatic updates
 
 When code is pushed to the `main` branch in `windows/**` or `scripts/**`, GitHub Actions:
 
