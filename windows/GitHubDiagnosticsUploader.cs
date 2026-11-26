@@ -65,14 +65,10 @@ internal static class GitHubDiagnosticsUploader
 
         var start = new ProcessStartInfo(gh)
         {
+            Arguments = "auth login --hostname github.com --web",
             UseShellExecute = true,
             WindowStyle = ProcessWindowStyle.Normal
         };
-        start.ArgumentList.Add("auth");
-        start.ArgumentList.Add("login");
-        start.ArgumentList.Add("--hostname");
-        start.ArgumentList.Add("github.com");
-        start.ArgumentList.Add("--web");
         Process.Start(start);
     }
 
