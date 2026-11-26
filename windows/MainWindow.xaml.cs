@@ -127,6 +127,7 @@ public partial class MainWindow : Window
         _appView.SortDescriptions.Add(new SortDescription(nameof(ApkLibraryEntry.DisplayName), ListSortDirection.Ascending));
         _appView.Filter = FilterApp;
         AppLibraryList.ItemsSource = _appView;
+        DockApps.ItemsSource = _apps;
         LoadAppLibrary();
         LoadRuntimeSettings();
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
@@ -296,6 +297,23 @@ public partial class MainWindow : Window
             RunAppButton_Click(sender, new RoutedEventArgs());
     }
 
+    private void DockHomeButton_Click(object sender, RoutedEventArgs e)
+    {
+        AppLibraryList.SelectedItem = null;
+        _selectedApkPath = null;
+        SelectedAppTitle.Text = "Welcome home";
+        InspectStatus.Text = "Choose an app from your library or add a new Android package.";
+        FileInfoText.Text = "";
+        MetadataText.Text = "";
+        UpdateRunButton();
+    }
+    private void DockAppButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button || button.Tag is not ApkLibraryEntry entry) return;
+        AppLibraryList.SelectedItem = entry;
+        if (RunAppButton.IsEnabled) RunAppButton_Click(sender, new RoutedEventArgs());
+        else InspectStatus.Text = "This app is selected. The managed runtime is not ready in this build.";
+    }
     private void AppLibraryList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry) return;
