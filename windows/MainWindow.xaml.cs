@@ -374,6 +374,7 @@ public partial class MainWindow : Window
         public string ApkPath { get; set; } = "";
         public string OriginalPath { get; set; } = "";
         public string? IconPath { get; set; }
+        public string Glyph => string.IsNullOrWhiteSpace(DisplayName) ? "A" : DisplayName[..1].ToUpperInvariant();
         [JsonIgnore] public ImageSource? Icon { get; set; }
     }
 
@@ -400,8 +401,7 @@ public partial class MainWindow : Window
             {
                 iconEntry = archive.Entries
                     .Where(e => e.Length > 0 && e.Length <= 2 * 1024 * 1024 &&
-                        (e.FullName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                         e.FullName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) &&
+                        e.FullName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) &&
                         (e.FullName.Contains("/mipmap-", StringComparison.OrdinalIgnoreCase) ||
                          e.FullName.Contains("/drawable-", StringComparison.OrdinalIgnoreCase) ||
                          Path.GetFileName(e.FullName).Equals("icon.png", StringComparison.OrdinalIgnoreCase)))
@@ -413,8 +413,7 @@ public partial class MainWindow : Window
 
             var iconDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Icons");
             Directory.CreateDirectory(iconDirectory);
-            var extension = iconEntry.FullName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ? ".webp" : ".png";
-            var destination = Path.Combine(iconDirectory, appId + extension);
+            var destination = Path.Combine(iconDirectory, appId + ".png");
             using (var input = iconEntry.Open())
             using (var output = File.Create(destination))
                 input.CopyTo(output);
