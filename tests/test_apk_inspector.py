@@ -14,7 +14,7 @@ MANIFEST = b'''<?xml version="1.0" encoding="utf-8"?>
  package="org.example.sample" android:versionName="1.2" android:versionCode="12">
  <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35"/>
  <uses-permission android:name="android.permission.INTERNET"/>
- <application><activity android:name=".MainActivity"/></application>
+ <application android:label="Sample App"><activity android:name=".MainActivity"/></application>
 </manifest>'''
 
 
@@ -40,6 +40,7 @@ class InspectorTests(unittest.TestCase):
             self.assertEqual(report["package"], "org.example.sample")
             self.assertEqual(report["min_sdk"], "23")
             self.assertEqual(report["target_sdk"], "35")
+            self.assertEqual(report["application_label"], "Sample App")
             self.assertIn("android.permission.INTERNET", report["permissions"])
             self.assertIn(".MainActivity", report["activities"])
             self.assertEqual(len(report["dex_files"]), 2)
