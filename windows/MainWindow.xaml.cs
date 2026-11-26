@@ -142,7 +142,7 @@ public partial class MainWindow : Window
             {
                 var safeName = Path.GetFileName(info.Name);
                 var destination = Path.Combine(LibraryDirectory, safeName);
-                if (File.Exists(destination)) destination = Path.Combine(LibraryDirectory, $"{Path.GetFileNameWithoutExtension(safeName)}-{Guid.NewGuid():N}"[..Math.Min(Path.GetFileNameWithoutExtension(safeName).Length + 9, Path.GetFileNameWithoutExtension(safeName).Length + 9)] + ".apk");
+                if (File.Exists(destination)) destination = Path.Combine(LibraryDirectory, Path.GetFileNameWithoutExtension(safeName) + "-" + Guid.NewGuid().ToString("N")[..8] + Path.GetExtension(safeName));
                 File.Copy(info.FullName, destination, overwrite: false);
                 existing = new ApkLibraryEntry { Id = Guid.NewGuid().ToString("N"), DisplayName = Path.GetFileNameWithoutExtension(info.Name), ApkPath = destination, OriginalPath = info.FullName, PackageSummary = "Inspecting package…" };
                 _apps.Add(existing);
@@ -155,7 +155,7 @@ public partial class MainWindow : Window
             FileInfoText.Text = $"{FormatSize(new FileInfo(existing.ApkPath).Length)} · Stored in DroidBox library";
             InspectStatus.Text = "Inspecting package metadata. APK code is not executed during inspection.";
             MetadataText.Text = "";
-            await InspectAsync(existing.ApkPath, _inspection?.Token ?? CancellationToken.None);
+            if (AppLibraryList.SelectedItem == existing) AppLibraryList_SelectionChanged(AppLibraryList, new System.Windows.Controls.SelectionChangedEventArgs(System.Windows.Controls.Primitives.Selector.SelectionChangedEvent, new System.Collections.ObjectModel.ReadOnlyCollection<object>(Array.Empty<object>()), new System.Collections.ObjectModel.ReadOnlyCollection<object>(Array.Empty<object>())));
         }
         catch (Exception ex)
         {
@@ -289,7 +289,7 @@ public partial class MainWindow : Window
             var libs = data.TryGetProperty("native_libraries", out var l) && l.ValueKind == JsonValueKind.Array ? l.GetArrayLength() : 0;
             if (AppLibraryList.SelectedItem is ApkLibraryEntry selectedEntry && string.Equals(selectedEntry.ApkPath, apkPath, StringComparison.OrdinalIgnoreCase))
             {
-                selectedEntry.PackageSummary = package;
+                selectedEntry.PackageSummary = package;\n                selectedEntry.DisplayName = string.IsNullOrWhiteSpace(version) || version == "—" ? selectedEntry.DisplayName : selectedEntry.DisplayName;
                 AppLibraryList.Items.Refresh();
                 SaveAppLibrary();
             }
