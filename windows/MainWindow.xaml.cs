@@ -13,6 +13,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Globalization;
+using System.Windows.Threading;
 using Velopack;
 using Velopack.Sources;
 namespace DroidBox.Windows;
@@ -24,6 +25,10 @@ public partial class MainWindow : Window
     private Process? _activeRuntimeProcess;
     private UpdateManager? _updateManager;
     private bool _updateCheckRunning;
+    private bool _isFullscreen;
+    private Rect _windowedBounds;
+    private WindowStyle _windowedStyle;
+    private ResizeMode _windowedResizeMode;
     private readonly ObservableCollection<ApkLibraryEntry> _apps = new();
     private ICollectionView? _appView;
     private static string LibraryDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Apps");
@@ -68,6 +73,47 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }
     private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+    private void ToggleFullscreenButton_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
+    private void Window_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F11) { ToggleFullscreen(); e.Handled = true; return; }
+        if (e.Key == Key.Escape && _isFullscreen) { ToggleFullscreen(); e.Handled = true; return; }
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.M)
+        {
+            FullscreenControls.Visibility = FullscreenControls.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            e.Handled = true;
+        }
+    }
+    private void ToggleFullscreen()
+    {
+        if (!_isFullscreen)
+        {
+            _windowedBounds = new Rect(Left, Top, Width, Height);
+            _windowedStyle = WindowStyle;
+            _windowedResizeMode = ResizeMode;
+            WindowState = WindowState.Normal;
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            Topmost = true;
+            Left = 0; Top = 0;
+            Width = SystemParameters.PrimaryScreenWidth;
+            Height = SystemParameters.PrimaryScreenHeight;
+            WindowChromeBar.Visibility = Visibility.Collapsed;
+            FullscreenControls.Visibility = Visibility.Collapsed;
+            _isFullscreen = true;
+        }
+        else
+        {
+            Topmost = false;
+            WindowStyle = _windowedStyle;
+            ResizeMode = _windowedResizeMode;
+            WindowChromeBar.Visibility = Visibility.Visible;
+            FullscreenControls.Visibility = Visibility.Collapsed;
+            Left = _windowedBounds.Left; Top = _windowedBounds.Top;
+            Width = _windowedBounds.Width; Height = _windowedBounds.Height;
+            _isFullscreen = false;
+        }
+    }
 
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "settings.json");
     public MainWindow()
@@ -166,20 +212,20 @@ public partial class MainWindow : Window
     }
     private void SelectButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "Select Android APK", Filter = "Android packages (*.apk)|*.apk", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = "Select Android APK", Filter = "Android packages (*.apk;*.xapk;*.apkm;*.apks;*.aab)|*.apk;*.xapk;*.apkm;*.apks;*.aab|APK files (*.apk)|*.apk|Android bundles (*.xapk;*.apkm;*.apks;*.aab)|*.xapk;*.apkm;*.apks;*.aab|All files (*.*)|*.*", CheckFileExists = true };
         if (dialog.ShowDialog() == true) ShowSelected(dialog.FileName);
     }
     private void Window_DragOver(object sender, DragEventArgs e) => e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
     private void Window_Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0) ShowSelected(files[0]);
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0) foreach (var file in files.Where(IsSupportedPackage)) ShowSelected(file);
     }
     private void ShowSelected(string path)
     {
         var info = new FileInfo(path);
-        if (!info.Exists || !string.Equals(info.Extension, ".apk", StringComparison.OrdinalIgnoreCase))
+        if (!info.Exists || !IsSupportedPackage(info.FullName))
         {
-            MessageBox.Show("Please select a valid APK file.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Choose an APK, XAPK, APKM, APKS or AAB Android package.", "Android Launcher", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         try
@@ -193,7 +239,7 @@ public partial class MainWindow : Window
                 var destination = Path.Combine(LibraryDirectory, safeName);
                 if (File.Exists(destination)) destination = Path.Combine(LibraryDirectory, Path.GetFileNameWithoutExtension(safeName) + "-" + Guid.NewGuid().ToString("N")[..8] + Path.GetExtension(safeName));
                 File.Copy(info.FullName, destination, overwrite: false);
-                existing = new ApkLibraryEntry { Id = Guid.NewGuid().ToString("N"), DisplayName = Path.GetFileNameWithoutExtension(info.Name), ApkPath = destination, OriginalPath = info.FullName, PackageSummary = "Inspecting package…" };
+                existing = new ApkLibraryEntry { Id = Guid.NewGuid().ToString("N"), DisplayName = Path.GetFileNameWithoutExtension(info.Name), ApkPath = destination, OriginalPath = info.FullName, PackageSummary = info.Extension.Equals(".apk", StringComparison.OrdinalIgnoreCase) ? "Reading app details…" : info.Extension.TrimStart('.').ToUpperInvariant() + " package" };
                 _apps.Add(existing);
                 SaveAppLibrary();
             }
@@ -201,9 +247,14 @@ public partial class MainWindow : Window
             AppLibraryList.ScrollIntoView(existing);
             _selectedApkPath = existing.ApkPath;
             UpdateRunButton();
-            FileInfoText.Text = $"{FormatSize(new FileInfo(existing.ApkPath).Length)} · Stored in DroidBox library";
-            InspectStatus.Text = "Inspecting package metadata. APK code is not executed during inspection.";
+            FileInfoText.Text = $"{FormatSize(new FileInfo(existing.ApkPath).Length)} · Stored on this PC";
+            SelectedAppTitle.Text = existing.DisplayName;
+            InspectStatus.Text = info.Extension.Equals(".apk", StringComparison.OrdinalIgnoreCase)
+                ? "Reading app details. The APK is not executed during inspection."
+                : "Package added. Lunaria supports this Android bundle format; compatibility depends on the app.";
             MetadataText.Text = "";
+            EmptyState.Visibility = _apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            AppCountText.Text = $"  ·  {_apps.Count} app{(_apps.Count == 1 ? "" : "s")}";
 
         }
         catch (Exception ex)
@@ -236,6 +287,7 @@ public partial class MainWindow : Window
     private void AppLibraryList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry) return;
+        SelectedAppTitle.Text = entry.DisplayName;
         _inspection?.Cancel();
         _inspection?.Dispose();
         _inspection = new CancellationTokenSource();
@@ -244,7 +296,10 @@ public partial class MainWindow : Window
         FileInfoText.Text = File.Exists(entry.ApkPath) ? $"{FormatSize(new FileInfo(entry.ApkPath).Length)} · Stored in DroidBox library" : "APK file is missing. Remove and add it again.";
         InspectStatus.Text = "Reading app details…";
         MetadataText.Text = "";
-        if (File.Exists(entry.ApkPath)) _ = InspectAsync(entry.ApkPath, _inspection.Token);
+        if (File.Exists(entry.ApkPath) && Path.GetExtension(entry.ApkPath).Equals(".apk", StringComparison.OrdinalIgnoreCase))
+            _ = InspectAsync(entry.ApkPath, _inspection.Token);
+        else
+            InspectStatus.Text = "Bundle selected. Launch is passed directly to the managed Lunaria runtime.";
     }
 
     private void RemoveAppButton_Click(object sender, RoutedEventArgs e)
@@ -260,6 +315,8 @@ public partial class MainWindow : Window
         InspectStatus.Text = "";
         MetadataText.Text = "";
         UpdateRunButton();
+        EmptyState.Visibility = _apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        AppCountText.Text = $"  ·  {_apps.Count} app{(_apps.Count == 1 ? "" : "s")}";
     }
 
     private void LoadAppLibrary()
@@ -268,8 +325,10 @@ public partial class MainWindow : Window
         {
             if (!File.Exists(LibraryIndexPath)) return;
             var saved = JsonSerializer.Deserialize<List<ApkLibraryEntry>>(File.ReadAllText(LibraryIndexPath)) ?? new();
-            foreach (var entry in saved.Where(a => !string.IsNullOrWhiteSpace(a.ApkPath) && File.Exists(a.ApkPath)))
+            foreach (var entry in saved.Where(a => !string.IsNullOrWhiteSpace(a.ApkPath) && File.Exists(a.ApkPath) && IsSupportedPackage(a.ApkPath)))
                 _apps.Add(entry);
+            EmptyState.Visibility = _apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            AppCountText.Text = $"  ·  {_apps.Count} app{(_apps.Count == 1 ? "" : "s")}";
         }
         catch
         {
@@ -363,7 +422,7 @@ public partial class MainWindow : Window
                 _appView?.Refresh();
                 SaveAppLibrary();
             }
-            InspectStatus.Text = "Package details loaded. Select Launch to test this APK.";
+            InspectStatus.Text = "App details loaded. Double-click its icon or choose Launch app.";
             MetadataText.Text = $"Package: {package}\nVersion: {version}\nSDK: min {minSdk} / target {targetSdk}\nPermissions: {permissions} • Activities: {activities}\nDEX files: {dex} • Native libraries: {libs}";
         }
         catch (OperationCanceledException)
@@ -442,15 +501,15 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(_selectedApkPath) || !File.Exists(_selectedApkPath))
         {
-            MessageBox.Show("Select an APK first.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Select an Android package first.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (string.IsNullOrWhiteSpace(_runtimePath) || !File.Exists(_runtimePath))
         {
-            MessageBox.Show("Select the Stubuika or Lunaria runtime executable first.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("The bundled Lunaria runtime is missing from this build.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var warning = "Experimental runtime launch. DroidBox does not sandbox this APK yet. The app may access files, network, and other resources available to your Windows account. Only run APKs you trust. Continue?";
+        var warning = "Experimental Android runtime launch. DroidBox does not sandbox this package yet. The app may access files, network, and other resources available to your Windows account. Only run APKs you trust. Continue?";
         if (MessageBox.Show(warning, "Security warning", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try
         {
@@ -579,10 +638,16 @@ public partial class MainWindow : Window
             MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
+    private static bool IsSupportedPackage(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return new[] { ".apk", ".xapk", ".apkm", ".apks", ".aab" }.Contains(extension, StringComparer.OrdinalIgnoreCase);
+    }
     private void UpdateRunButton()
     {
         RunAppButton.IsEnabled = !string.IsNullOrWhiteSpace(_selectedApkPath)
             && File.Exists(_selectedApkPath)
+            && IsSupportedPackage(_selectedApkPath)
             && !string.IsNullOrWhiteSpace(_runtimePath)
             && File.Exists(_runtimePath)
             && !(_activeRuntimeProcess is { HasExited: false });
@@ -599,9 +664,15 @@ public partial class MainWindow : Window
             }
             if (string.IsNullOrWhiteSpace(_runtimePath) || !File.Exists(_runtimePath))
             {
-                var bundledRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Stubuika");
+                var bundledRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Lunaria");
                 if (Directory.Exists(bundledRoot))
-                    _runtimePath = Directory.EnumerateFiles(bundledRoot, "stubuika.exe", SearchOption.AllDirectories).FirstOrDefault();
+                    _runtimePath = Directory.EnumerateFiles(bundledRoot, "lunaria.exe", SearchOption.AllDirectories).FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(_runtimePath))
+                {
+                    var legacyRoot = Path.Combine(AppContext.BaseDirectory, "runtime", "Stubuika");
+                    if (Directory.Exists(legacyRoot))
+                        _runtimePath = Directory.EnumerateFiles(legacyRoot, "stubuika.exe", SearchOption.AllDirectories).FirstOrDefault();
+                }
             }
             RuntimePathText.Text = !string.IsNullOrWhiteSpace(_runtimePath) && File.Exists(_runtimePath)
                 ? "Managed runtime · " + Path.GetFileName(_runtimePath)
