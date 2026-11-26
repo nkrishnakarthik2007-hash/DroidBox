@@ -10,7 +10,7 @@ DroidBox is currently an experimental launcher and runtime-integration project. 
 The intended user experience is a normal Windows application:
 
 - A Windows 11-style NKK-branded window with minimise, maximise/restore and close controls, plus a matching taskbar icon.
-- A local APK library with Add app, app icons, app details and launch actions.
+- A local APK library with Add app, searchable app tiles, package details and launch actions.
 - Runtime components managed by DroidBox; ordinary users should not need to browse for an executable.
 - Understandable status messages and a dedicated diagnostics window with search, error/warning filters, copy and open-folder actions.
 - NKK branding across the app, Start menu, taskbar, installer and feedback page.
@@ -62,11 +62,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 - [x] Windows-native title bar, Mica styling, NKK title-bar mark and window controls
 - [x] Release pipeline stages the Stubuika Windows runtime and its third-party notices; app auto-discovery added (release verification pending)
-- [x] App library: import APKs into local app storage, persist entries, select and remove apps
+- [x] App library: import APKs into local app storage, persist entries, search, select and remove apps
 - [x] Human-readable logs and a dedicated diagnostics view
 - [x] GitHub Pages feedback form and structured issue template
 - [ ] Fix Stubuika Windows EGL/display initialisation and framework resources
 - [ ] Verify a simple APK end-to-end before claiming app execution
+- [ ] Extract and display each APK's actual launcher icon and app label
 - [ ] Compatibility test matrix for Java UI, native libraries, graphics, storage and input
 - [ ] App isolation and permissions model
 
