@@ -21,7 +21,7 @@ The intended user experience is a normal Windows application:
 - APK selection, drag/drop and safe metadata inspection are implemented.
 - A WPF .NET 8 Windows shell and GitHub release/update pipeline exist.
 - The current Windows release workflow bundles Project Lunaria 2026.11.24 and Android Platform 31 framework resources.
-- The latest automated Windows smoke test passed its Android startup checks: EGL 1.5 initialised, the test APK reached `MainActivity.onResume()`, the guest UI tree was parsed, and a non-black compositor frame was captured. This verifies the smoke-test APK only; it does not guarantee every APK will work.
+- The latest automated Windows smoke test passed its Android startup checks: EGL 1.5 initialised, the test APK reached `MainActivity.onResume()`, the guest UI tree was parsed, and the final compositor frame visibly showed the DroidBox Runtime Test screen with “Launch + Activity lifecycle: PASS”. The earlier captured frames were still the Lunaria loading splash, so CI now checks the latest frame rather than the first non-black frame. This verifies the smoke-test APK only; it does not guarantee every APK will work.
 - A process exit code of 0 alone is not proof that an Android app rendered. DroidBox records runtime output and checks visible compositor output in the automated smoke test.
 - APK execution is not sandboxed. Only use APKs you trust.
 
