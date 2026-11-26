@@ -143,9 +143,7 @@ public partial class MainWindow : Window
         Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)));
         _appView = CollectionViewSource.GetDefaultView(_apps);
         _appView.SortDescriptions.Add(new SortDescription(nameof(ApkLibraryEntry.DisplayName), ListSortDirection.Ascending));
-        _appView.Filter = FilterApp;
         AppLibraryList.ItemsSource = _appView;
-        DockApps.ItemsSource = _apps;
         LoadAppLibrary();
         LoadRuntimeSettings();
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
@@ -274,21 +272,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private bool FilterApp(object item)
-    {
-        if (item is not ApkLibraryEntry app) return false;
-        var query = AppSearchBox?.Text?.Trim();
-        if (string.IsNullOrWhiteSpace(query)) return true;
-        return app.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase)
-            || app.PackageSummary.Contains(query, StringComparison.OrdinalIgnoreCase)
-            || app.ApkPath.Contains(query, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private void AppSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
-    {
-        _appView?.Refresh();
-    }
-
     private void AppLibraryList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (AppLibraryList.SelectedItem is ApkLibraryEntry && RunAppButton.IsEnabled)
@@ -314,7 +297,12 @@ public partial class MainWindow : Window
     }
     private void AppLibraryList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry) return;
+        if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry)
+        {
+            SelectedAppDetailsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        SelectedAppDetailsPanel.Visibility = Visibility.Visible;
         SelectedAppTitle.Text = entry.DisplayName;
         _inspection?.Cancel();
         _inspection?.Dispose();
