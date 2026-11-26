@@ -13,6 +13,7 @@ All notable DroidBox changes are documented here. New changes must be added at t
 ### Changed
 - Show the update-available prompt with the Telugu action phrase **ఇన్‌స్టాల్ చేసుకో** while keeping the rest of the interface in English.
 - Include recent application-startup logs as well as Android-runtime logs in the user-approved diagnostic report.
+- Make the Windows smoke test inspect the final captured compositor frame and fail the release job if the Android test UI is not visibly rendered; classify application INFO/WARN/ERROR records in Diagnostics.
 
 
 ### Research
