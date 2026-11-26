@@ -297,7 +297,12 @@ public partial class MainWindow : Window
     }
     private void AppLibraryList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry) return;
+        if (AppLibraryList.SelectedItem is not ApkLibraryEntry entry)
+        {
+            SelectedAppDetailsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        SelectedAppDetailsPanel.Visibility = Visibility.Visible;
         SelectedAppTitle.Text = entry.DisplayName;
         _inspection?.Cancel();
         _inspection?.Dispose();
