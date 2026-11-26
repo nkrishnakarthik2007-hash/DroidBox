@@ -121,7 +121,7 @@ jobs:
           $env:LUNARIA_CACHE_DIR = $cache
           $env:LUNARIA_DUMP_DIR = $frames
           $env:LUNARIA_DUMP_FRAME = "0,60,120"
-          $env:LUNARIA_COMP_SHOT_S = "1"
+          $env:LUNARIA_COMP_SHOT_S = "0.000000001"
           $psi = [System.Diagnostics.ProcessStartInfo]::new()
           $psi.FileName = $runtime.FullName
           $psi.WorkingDirectory = $runtime.Directory.FullName
