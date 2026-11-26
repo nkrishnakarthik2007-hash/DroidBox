@@ -9,10 +9,10 @@ DroidBox is currently an experimental launcher and runtime-integration project. 
 
 The intended user experience is a normal Windows application:
 
-- A Windows 11-style window with minimise, maximise/restore and close controls.
+- A Windows 11-style NKK-branded window with minimise, maximise/restore and close controls, plus a matching taskbar icon.
 - A local APK library with Add app, app icons, app details and launch actions.
 - Runtime components managed by DroidBox; ordinary users should not need to browse for an executable.
-- Understandable status messages and a readable diagnostics viewer, with raw logs available when needed.
+- Understandable status messages and a dedicated diagnostics window with search, error/warning filters, copy and open-folder actions.
 - NKK branding across the app, Start menu, taskbar, installer and feedback page.
 - Optional advanced runtime settings for developers and testers.
 
@@ -35,6 +35,7 @@ DroidBox's launcher and original code are separate from the Stubuika project. Do
 Requirements: Windows 10/11 and .NET 8 SDK.
 
 ```powershell
+python scripts/create_windows_icon.py
 cd windows
 dotnet build
 dotnet run
@@ -59,10 +60,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 ## Roadmap
 
-- [x] First Windows-native title bar, Mica styling and NKK title-bar mark (CI verification pending)
+- [x] Windows-native title bar, Mica styling, NKK title-bar mark and window controls
 - [x] Release pipeline stages the Stubuika Windows runtime and its third-party notices; app auto-discovery added (release verification pending)
 - [x] App library: import APKs into local app storage, persist entries, select and remove apps
-- [ ] Human-readable logs and a dedicated diagnostics view
+- [x] Human-readable logs and a dedicated diagnostics view
 - [x] GitHub Pages feedback form and structured issue template
 - [ ] Fix Stubuika Windows EGL/display initialisation and framework resources
 - [ ] Verify a simple APK end-to-end before claiming app execution
