@@ -155,7 +155,7 @@ public partial class MainWindow : Window
             FileInfoText.Text = $"{FormatSize(new FileInfo(existing.ApkPath).Length)} · Stored in DroidBox library";
             InspectStatus.Text = "Inspecting package metadata. APK code is not executed during inspection.";
             MetadataText.Text = "";
-            if (AppLibraryList.SelectedItem == existing) AppLibraryList_SelectionChanged(AppLibraryList, new System.Windows.Controls.SelectionChangedEventArgs(System.Windows.Controls.Primitives.Selector.SelectionChangedEvent, new System.Collections.ObjectModel.ReadOnlyCollection<object>(Array.Empty<object>()), new System.Collections.ObjectModel.ReadOnlyCollection<object>(Array.Empty<object>())));
+            if (AppLibraryList.SelectedItem == existing && _selectedApkPath == existing.ApkPath) _ = InspectAsync(existing.ApkPath, _inspection?.Token ?? CancellationToken.None);
         }
         catch (Exception ex)
         {
