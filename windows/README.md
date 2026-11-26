@@ -16,7 +16,7 @@ Installed copies check GitHub Releases at startup and have a **Check for updates
 
 ## User data
 
-Settings, diagnostic logs, the APK library index and imported APK copies are stored under `%LOCALAPPDATA%\\DroidBox`. These files are kept outside the replaceable application install directory. Imported APKs are copied into `%LOCALAPPDATA%\\DroidBox\\Apps`; removing an app from the library deletes only that managed copy, not the original APK selected by the user.
+Settings, diagnostic logs, the APK library index, imported Android packages, extracted app icons, Lunaria's Android data root and its package cache are stored under `%LOCALAPPDATA%\\DroidBox`. The runtime is launched with an explicit `--data-root` and `LUNARIA_CACHE_DIR`, so updating or replacing the application does not erase guest app data or package caches. These files are kept outside the replaceable application install directory. Imported APKs are copied into `%LOCALAPPDATA%\\DroidBox\\Apps`; removing an app from the library deletes only that managed copy, not the original APK selected by the user.
 
 ## Diagnostics and report sharing
 
@@ -26,6 +26,7 @@ DroidBox captures runtime stdout/stderr automatically. Open **Diagnostics & send
 
 - Windows 11-inspired Mica/dark title bar, NKK identity and custom window controls.
 - Select or drag APK, APKM, XAPK, APKS or AAB packages into the Android Launcher library.
+- Show extracted PNG application icons when the package contains a supported launcher icon; otherwise use a letter tile.
 - Launch packages from an icon grid; double-click an app or use Launch app.
 - Press F11 for immersive full screen (covers the Windows taskbar); press Escape to restore.
 - Press Ctrl+Shift+M in full screen to reveal the temporary window-control strip.
