@@ -5,6 +5,8 @@ All notable DroidBox changes are documented here. New changes must be added at t
 ## [Unreleased]
 
 ### Added
+- Added app-library search across app names, package IDs and stored APK paths.
+- Added alphabetical sorting and compact app tiles for a more app-like library experience.
 - Added a dedicated diagnostics window with readable log labels, search, error/warning filters, copy and open-folder actions.
 - Added an NKK-branded title bar with minimise, maximise/restore and close controls.
 - Added a reproducible NKK DroidBox `.ico` generator and embedded the generated icon in the Windows executable.
