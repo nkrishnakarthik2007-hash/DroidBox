@@ -5,6 +5,7 @@ All notable DroidBox changes are documented here. New changes must be added at t
 ## [Unreleased]
 
 ### Added
+- Configured Velopack packaging with the NKK DroidBox display name, NKK publisher attribution, branded ICO for Setup/Update dialogs, and desktop/Start menu shortcuts. Velopack's normal uninstall registration is retained.
 - Added app-library search across app names, package IDs and stored APK paths.
 - Added alphabetical sorting and compact app tiles for a more app-like library experience.
 - Added a dedicated diagnostics window with readable log labels, search, error/warning filters, copy and open-folder actions.
