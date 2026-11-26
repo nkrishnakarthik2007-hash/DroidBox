@@ -102,7 +102,6 @@ jobs:
           "Bundled Lunaria runtime and licence notices."
 
       - name: Run native Windows Lunaria smoke test
-        continue-on-error: true
         timeout-minutes: 2
         env:
           GH_TOKEN: ${{ github.token }}
