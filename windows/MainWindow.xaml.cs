@@ -377,6 +377,13 @@ public partial class MainWindow : Window
                     iconsUpdated |= !string.IsNullOrWhiteSpace(entry.IconPath);
                 }
                 entry.Icon = LoadPackageIcon(entry.IconPath);
+                if (entry.Icon is null && File.Exists(entry.ApkPath))
+                {
+                    // Retry extraction when an older saved icon path is missing or no longer decodes.
+                    entry.IconPath = ExtractPackageIcon(entry.ApkPath, entry.Id);
+                    entry.Icon = LoadPackageIcon(entry.IconPath);
+                    iconsUpdated |= !string.IsNullOrWhiteSpace(entry.IconPath);
+                }
                 if (entry.Icon is null)
                     AppLog.Warning($"No displayable app icon is available for '{entry.DisplayName}' ({Path.GetFileName(entry.ApkPath)}).");
                 _apps.Add(entry);
