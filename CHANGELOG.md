@@ -4,6 +4,9 @@ All notable DroidBox changes are documented here. New changes must be added at t
 
 ## [Unreleased]
 
+### Research
+- Added a source-level Windows EGL investigation identifying the null native-display handoff as a likely Stubuika startup blocker; documented the Windows default-display/HWND validation path without claiming a verified fix.
+
 ### Added
 - Improved diagnostic readability by classifying runtime stderr and error-like messages as ERROR, warning messages as WARNING, and normal stdout as INFO; severity filters now use the displayed classifications.
 - Configured Velopack packaging with the NKK DroidBox display name, NKK publisher attribution, branded ICO for Setup/Update dialogs, and desktop/Start menu shortcuts. Velopack's normal uninstall registration is retained.
