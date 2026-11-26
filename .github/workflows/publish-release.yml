@@ -121,6 +121,7 @@ jobs:
           $env:LUNARIA_CACHE_DIR = $cache
           $env:LUNARIA_DUMP_DIR = $frames
           $env:LUNARIA_DUMP_FRAME = "0,60,120"
+          $env:LUNARIA_COMP_SHOT_S = "2"
           $psi = [System.Diagnostics.ProcessStartInfo]::new()
           $psi.FileName = $runtime.FullName
           $psi.WorkingDirectory = $runtime.Directory.FullName
@@ -155,11 +156,37 @@ jobs:
           }
           if ($runtimeLog.Contains("[framework] resources unavailable")) { throw "Lunaria could not find Android framework resources. Check the Platform 31 bundle." }
           "PASS: EGL initialised, Android Activity reached onResume, guest UI parsed, and no missing-framework-resource warning was reported." | Add-Content smoke-test-result.txt
-          $captured = @(Get-ChildItem $frames -Filter *.png -ErrorAction SilentlyContinue)
+          $captured = @(Get-ChildItem $frames -Filter "comp_*.ppm" -ErrorAction SilentlyContinue)
           if ($captured.Count -gt 0) {
-            "Captured $($captured.Count) guest frame image(s)." | Add-Content smoke-test-result.txt
+            $shot = $captured[0]
+            $bytes = [System.IO.File]::ReadAllBytes($shot.FullName)
+            $newlineCount = 0
+            $payloadStart = -1
+            for ($index = 0; $index -lt $bytes.Length; $index++) {
+              if ($bytes[$index] -eq 10) {
+                $newlineCount++
+                if ($newlineCount -eq 3) { $payloadStart = $index + 1; break }
+              }
+            }
+            if ($payloadStart -lt 0 -or ($bytes.Length - $payloadStart) -lt 300) { throw "Compositor PPM screenshot has an invalid header or no pixel payload." }
+            $sum = 0.0
+            $colors = [System.Collections.Generic.HashSet[int]]::new()
+            $samples = 0
+            for ($index = $payloadStart; $index -lt $bytes.Length; $index += 96) {
+              if (($index + 2) -ge $bytes.Length) { break }
+              $red = [int]$bytes[$index]
+              $green = [int]$bytes[$index + 1]
+              $blue = [int]$bytes[$index + 2]
+              $sum += ($red + $green + $blue) / 3.0
+              [void]$colors.Add(($red -shl 16) -bor ($green -shl 8) -bor $blue)
+              $samples++
+            }
+            $average = $sum / [Math]::Max(1,$samples)
+            "Compositor screenshot $($shot.Name): average brightness=$([Math]::Round($average,2)), sampled colors=$($colors.Count)." | Add-Content smoke-test-result.txt
+            if ($average -lt 3 -or $colors.Count -lt 8) { throw "Lunaria compositor screenshot is blank or black." }
+            "PASS: non-black composed Windows app frame captured." | Add-Content smoke-test-result.txt
           } else {
-            "Guest-frame dump was unavailable on this Windows run; runtime startup and UI lifecycle logs are the available validation." | Add-Content smoke-test-result.txt
+            "No compositor PPM screenshot was emitted; EGL and Android UI lifecycle passed, but visible frame output remains unverified." | Add-Content smoke-test-result.txt
           }
 
       - name: Upload native Windows smoke-test logs and frames
