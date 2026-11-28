@@ -1,0 +1,3 @@
+[submodule "runtime/lunaria"]
+	path = runtime/lunaria
+	url = https://github.com/yui0/lunaria.git
