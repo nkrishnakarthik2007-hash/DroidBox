@@ -3,6 +3,7 @@ package com.nkk.droidbox.smoketest;
 import android.app.Activity;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -46,6 +47,7 @@ public final class MainActivity extends Activity {
         root.addView(counter);
         root.addView(file);
         setContentView(root);
+        Log.d("DroidBoxSmokeTest", "JNI varargs regression probe");
         status.setText("Ready. Previous taps: " + clicks + "\nLaunch + Activity lifecycle: PASS");
     }
 
