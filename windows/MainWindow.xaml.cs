@@ -227,7 +227,7 @@ public partial class MainWindow : Window
         var info = new FileInfo(path);
         if (!info.Exists || !IsSupportedPackage(info.FullName))
         {
-            MessageBox.Show("Choose an APK, XAPK, APKM, APKS or AAB Android package.", "Android Launcher", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Choose an APK, XAPK, APKM, APKS or AAB Android package.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         try
@@ -263,7 +263,7 @@ public partial class MainWindow : Window
             SelectedAppTitle.Text = existing.DisplayName;
             InspectStatus.Text = info.Extension.Equals(".apk", StringComparison.OrdinalIgnoreCase)
                 ? "Reading app details. The APK is not executed during inspection."
-                : "Package added. Lunaria supports this Android bundle format; compatibility depends on the app.";
+                : "Package added. Runtime support depends on the Android app and its required features.";
             MetadataText.Text = "";
             EmptyState.Visibility = _apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             AppCountText.Text = $"  ·  {_apps.Count} app{(_apps.Count == 1 ? "" : "s")}";
@@ -318,7 +318,7 @@ public partial class MainWindow : Window
         if (File.Exists(entry.ApkPath) && Path.GetExtension(entry.ApkPath).Equals(".apk", StringComparison.OrdinalIgnoreCase))
             _ = InspectAsync(entry.ApkPath, _inspection.Token);
         else
-            InspectStatus.Text = "Bundle selected. Launch is passed directly to the managed Lunaria runtime.";
+            InspectStatus.Text = "Android bundle selected. DroidBox will pass it to the bundled runtime.";
     }
 
     private void RemoveAppButton_Click(object sender, RoutedEventArgs e)
@@ -596,7 +596,7 @@ public partial class MainWindow : Window
         }
         if (string.IsNullOrWhiteSpace(_runtimePath) || !File.Exists(_runtimePath))
         {
-            MessageBox.Show("The bundled Lunaria runtime is missing from this build.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("The Android runtime component is missing from this DroidBox build.", "DroidBox", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         var warning = "Experimental Android runtime launch. DroidBox does not sandbox this package yet. The app may access files, network, and other resources available to your Windows account. Only run APKs you trust. Continue?";
@@ -623,7 +623,7 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(userDataRoot);
             Directory.CreateDirectory(dataRoot);
             Directory.CreateDirectory(packageCache);
-            if (!File.Exists(runtimeConfig)) File.WriteAllText(runtimeConfig, "# NKK Android Launcher · persistent Lunaria settings\n");
+            if (!File.Exists(runtimeConfig)) File.WriteAllText(runtimeConfig, # DroidBox persistent runtime settings\n);
             psi.ArgumentList.Add("--config");
             psi.ArgumentList.Add(runtimeConfig);
             psi.ArgumentList.Add("--data-root");
@@ -665,7 +665,13 @@ public partial class MainWindow : Window
                 StopRuntimeButton.IsEnabled = false;
                 UpdateRunButton();
                 InspectStatus.Text = exitCode == 0 ? $"Runtime process ended normally, but this does not confirm that the Android app rendered. Open readable diagnostics. Log: {logPath}" : $"Runtime failed (exit code {exitCode}). Open diagnostics for the cause. Log: {logPath}";
-                if (exitCode != 0) _ = OfferDiagnosticsUploadAsync();
+                if (exitCode != 0)
+                {
+                    var answer = MessageBox.Show(
+                        $"The Android runtime stopped with exit code {exitCode}. DroidBox saved the diagnostic log here:\\n{logPath}\\n\\nOpen Diagnostics now?",
+                        "DroidBox runtime stopped", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (answer == MessageBoxResult.Yes) OpenRuntimeLogsButton_Click(this, new RoutedEventArgs());
+                }
                 process.Dispose();
             });
             if (!process.Start())
@@ -688,33 +694,6 @@ public partial class MainWindow : Window
             MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
-    private async Task OfferDiagnosticsUploadAsync()
-    {
-        var answer = MessageBox.Show(
-            "The Android runtime exited with an error. Would you like DroidBox to send a sanitized diagnostic report to NKK on GitHub? The report creates a public issue; APK files are never uploaded.",
-            "Runtime error detected", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        if (answer != MessageBoxResult.Yes) return;
-        try
-        {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "Logs");
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
-            var url = await GitHubDiagnosticsUploader.SendLatestAsync(directory, timeout.Token);
-            InspectStatus.Text = "Diagnostic report sent · " + url;
-            if (MessageBox.Show("Report sent successfully. Open it on GitHub?", "DroidBox diagnostics", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            InspectStatus.Text = "Automatic report was not sent · " + ex.Message;
-            if (MessageBox.Show(ex.Message + "\n\nOpen GitHub setup/sign-in now?",
-                "GitHub connection needed", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-            {
-                try { GitHubDiagnosticsUploader.StartGitHubConnection(); }
-                catch (Exception launchError) { InspectStatus.Text = "Could not open GitHub setup · " + launchError.Message; }
-            }
-        }
-    }
-
     private void OpenRuntimeLogsButton_Click(object sender, RoutedEventArgs e)
     {
         var diagnostics = new DiagnosticsWindow { Owner = this };
