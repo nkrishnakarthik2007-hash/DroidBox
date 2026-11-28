@@ -4,12 +4,22 @@ All notable DroidBox changes are documented here. New changes must be added at t
 
 ## [Unreleased]
 
+### Changed
+- Rebranded the Windows launcher surface as **DroidBox** and added the footer attribution **Made with ♥ by NKK**.
+- Removed the GitHub CLI dependency and public issue uploader from the desktop app. Diagnostics now provides a PowerShell command that creates a locally sanitized ZIP for sharing in the development conversation.
+- Added persistent application startup, crash, and runtime-launch logging under `%LOCALAPPDATA%\\DroidBox\\Logs`.
+- Keep the DroidBox startup splash visible until the main launcher reports its first rendered frame; report startup failures with the local log-folder path.
+
+### Fixed
+- Replaced user-facing Lunaria runtime messages with DroidBox/Android-runtime wording while preserving existing internal runtime paths and data folders.
+- Fixed the runtime settings comment string after the branding update.
+
 ### Research
 - Added a source-level Windows EGL investigation identifying the null native-display handoff in the exact bundled Stubuika release tag as a likely startup blocker; documented the Windows default-display/HWND validation path without claiming a verified fix.
 
 ### Added
-- Added a consent-based diagnostic uploader that reuses GitHub CLI authentication, sanitizes recent runtime logs and creates a public GitHub issue; runtime crashes now offer one-click report submission.
-- Added a branded diagnostics sharing panel and clear public-report disclosure.
+- Added a local PowerShell diagnostic-bundle command; no GitHub CLI or account sign-in is required.
+- Added a branded local diagnostics sharing panel that prepares recent logs for sharing in ChatGPT.
 - Upgraded the NKK DroidBox icon generator to create seven anti-aliased Windows icon sizes for sharper taskbar, Start menu and installer branding.
 - Improved diagnostic readability by classifying runtime stderr and error-like messages as ERROR, warning messages as WARNING, and normal stdout as INFO; severity filters now use the displayed classifications.
 - Configured Velopack packaging with the NKK DroidBox display name, NKK publisher attribution, branded ICO for Setup/Update dialogs, and desktop/Start menu shortcuts. Velopack's normal uninstall registration is retained.
