@@ -12,6 +12,7 @@
     </Border>
     <TextBlock Text="DroidBox" FontSize="25" FontWeight="Bold" Foreground="#F7F5FF" HorizontalAlignment="Center" Margin="0,17,0,0"/>
     <TextBlock Text="ANDROID, MEET WINDOWS." FontSize="9" FontWeight="Bold" Foreground="#A9A1FF" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+    <TextBlock Text="Made with ♥ by NKK" FontSize="9" FontWeight="SemiBold" Foreground="#73F0D2" HorizontalAlignment="Center" Margin="0,5,0,0"/>
     <ProgressBar Width="180" Height="3" IsIndeterminate="True" Foreground="#8A76FF" Background="#34334C" BorderThickness="0" Margin="0,24,0,0"/>
     <TextBlock x:Name="StartupStatusText" Text="Starting DroidBox…" FontSize="10" Foreground="#929DB8" HorizontalAlignment="Center" Margin="0,10,0,0"/>
    </StackPanel>
