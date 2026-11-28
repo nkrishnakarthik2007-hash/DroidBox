@@ -102,7 +102,6 @@ jobs:
           "Bundled Lunaria runtime and licence notices."
 
       - name: Run native Windows Lunaria smoke test
-        continue-on-error: true
         timeout-minutes: 2
         env:
           GH_TOKEN: ${{ github.token }}
@@ -158,7 +157,7 @@ jobs:
           "PASS: EGL initialised, Android Activity reached onResume, guest UI parsed, and no missing-framework-resource warning was reported." | Add-Content smoke-test-result.txt
           $captured = @(Get-ChildItem $frames -Filter "comp_*.ppm" -ErrorAction SilentlyContinue)
           if ($captured.Count -gt 0) {
-            $shot = $captured[0]
+            $shot = $captured[-1] # Validate the final app frame, not the initial runtime loading splash.
             $bytes = [System.IO.File]::ReadAllBytes($shot.FullName)
             $newlineCount = 0
             $payloadStart = -1
