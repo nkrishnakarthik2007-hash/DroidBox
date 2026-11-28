@@ -68,32 +68,33 @@ jobs:
       - name: Bundle the source-built Lunaria Windows x64 runtime
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           $sourceRun = $null
           $deadline = (Get-Date).AddMinutes(100)
           while (-not $sourceRun -and (Get-Date) -lt $deadline) {
-            $runsJson = gh run list --workflow build-nkk-lunaria-windows.yml --commit $env:GITHUB_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            $runsJson = gh run list --workflow build-nkk-lunaria-windows.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
             if ($LASTEXITCODE -ne 0) { throw "Could not query the source-build workflow." }
             $runs = $runsJson | ConvertFrom-Json
-            $sourceRun = $runs | Where-Object { $_.headSha -eq $env:GITHUB_SHA } | Select-Object -First 1
+            $sourceRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
             if (-not $sourceRun) { Start-Sleep -Seconds 15 }
           }
           if (-not $sourceRun) { throw "Timed out waiting for the source-built Lunaria workflow." }
 
           while ($sourceRun.status -ne "completed" -and (Get-Date) -lt $deadline) {
             Start-Sleep -Seconds 15
-            $runsJson = gh run list --workflow build-nkk-lunaria-windows.yml --commit $env:GITHUB_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            $runsJson = gh run list --workflow build-nkk-lunaria-windows.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
             if ($LASTEXITCODE -ne 0) { throw "Could not refresh the source-build workflow status." }
             $runs = $runsJson | ConvertFrom-Json
-            $sourceRun = $runs | Where-Object { $_.headSha -eq $env:GITHUB_SHA } | Select-Object -First 1
+            $sourceRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
           }
           if ($sourceRun.status -ne "completed" -or $sourceRun.conclusion -ne "success") {
             throw "Source-built Lunaria did not pass. Status=$($sourceRun.status); conclusion=$($sourceRun.conclusion)"
           }
 
-          $artifactName = "NKK-Lunaria-Windows-x64-$env:GITHUB_SHA"
+          $artifactName = "NKK-Lunaria-Windows-x64-$env:SOURCE_COMMIT_SHA"
           $artifactRoot = Join-Path $PWD "lunaria-source-artifact"
           gh run download $sourceRun.databaseId --repo $env:GITHUB_REPOSITORY --name $artifactName --dir $artifactRoot
           if ($LASTEXITCODE -ne 0) { throw "Could not download the successful source-build artifact." }
