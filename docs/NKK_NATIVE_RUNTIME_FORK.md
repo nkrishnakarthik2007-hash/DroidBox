@@ -9,8 +9,8 @@ The DroidBox WPF shell remains a separate Windows-native product layer.
 ## Pinned upstream baseline
 
 - Project: [yui0/lunaria](https://github.com/yui0/lunaria)
-- Baseline release: `2026.11.24`
-- Exact upstream commit: `eb9ffcc8493deac82b45932aba9a17d03cca2371`
+- Baseline release: `2026.11.24`, with subsequent upstream Windows fixes included
+- Exact upstream commit: `1d538e7e0ddab3074131cfbce6f9d0825764316e`
 - Main license: Mozilla Public License 2.0 (MPL-2.0)
 - Nested source dependency: `Berry-OS/luna-ui`, pinned by upstream at `47b5df45b9973197227baa983efe7f261646d1d0`.
 - Checkout must use recursive submodules. Other bundled third-party components have their own notices/licenses; retain and audit them before redistribution.
@@ -21,12 +21,12 @@ The source is tracked at `runtime/lunaria` as a pinned Git submodule for this bo
 
 Workflow: `.github/workflows/build-nkk-lunaria-windows.yml`
 
-- Runs on pull requests touching the runtime pin/workflow/docs and can be started manually.
+- Runs on pull requests and pushes to `main` when the runtime pin, source-build workflow, release workflow, or runtime documentation changes; it can also be started manually.
 - Checks out Lunaria and its nested `luna-ui` source recursively.
 - Uses the upstream documented Linux-to-Windows UCRT cross-build path (`make dist-cross-win`).
 - Pins the llvm-mingw UCRT toolchain version used by the upstream release helper.
 - Builds with debug information and uploads the ZIP, checksum and build log as a 14-day Actions artifact.
-- This workflow has been authored but is **not yet proven green**. The first CI run is the validation step; fix build failures before integrating the resulting binary into DroidBox.
+- The first source build completed successfully on 2026-11-28: Windows x64 package verification and artifact upload passed. The source-built artifact is now the intended input to the DroidBox packaging workflow; the integrated smoke test must still be rerun against this exact binary.
 
 Upstream's own documentation says Windows packages can be produced with `make dist` under MSYS2 UCRT64 or `make dist-cross-win` from Linux. Its published native Windows display/audio status remains experimental, so a successful compile is not an app-compatibility pass.
 
