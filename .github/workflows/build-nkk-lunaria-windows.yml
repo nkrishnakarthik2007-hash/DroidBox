@@ -38,6 +38,11 @@ jobs:
           echo "Luna UI commit: $(git -C runtime/lunaria/src/luna-ui rev-parse HEAD)"
           git -C runtime/lunaria status --short
 
+      - name: Set up Python 3.11 for upstream build scripts
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install Linux cross-build prerequisites
         run: |
           sudo apt-get update
@@ -46,7 +51,9 @@ jobs:
             pkg-config libboost-dev libssl-dev libglfw3-dev libgles2-mesa-dev \
             libegl1-mesa-dev libasound2-dev libbsd-dev libunwind-dev zlib1g-dev \
             libvulkan-dev libxcb1-dev libxcb-shm0-dev libxcb-randr0-dev \
-            python3 curl jq zip unzip bzip2 xz-utils zstd git
+            curl jq zip unzip bzip2 xz-utils zstd git
+          python --version
+          python -c "import hashlib; assert hasattr(hashlib, 'file_digest')"
 
       - name: Install pinned UCRT cross compiler
         shell: bash
