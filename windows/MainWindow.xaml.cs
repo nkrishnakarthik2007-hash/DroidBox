@@ -629,7 +629,7 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(userDataRoot);
             Directory.CreateDirectory(dataRoot);
             Directory.CreateDirectory(packageCache);
-            if (!File.Exists(runtimeConfig)) File.WriteAllText(runtimeConfig, "# DroidBox persistent runtime settings\\n");
+            if (!File.Exists(runtimeConfig)) File.WriteAllText(runtimeConfig, "# DroidBox persistent runtime settings\n");
             psi.ArgumentList.Add("--config");
             psi.ArgumentList.Add(runtimeConfig);
             psi.ArgumentList.Add("--data-root");
@@ -674,7 +674,7 @@ public partial class MainWindow : Window
                 if (exitCode != 0)
                 {
                     var answer = MessageBox.Show(
-                        $"The Android runtime stopped with exit code {exitCode}. DroidBox saved the diagnostic log here:\\n{logPath}\\n\\nOpen Diagnostics now?",
+                        $"The Android runtime stopped with exit code {exitCode}. DroidBox saved the diagnostic log here:\n{logPath}\n\nOpen Diagnostics now?",
                         "DroidBox runtime stopped", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                     if (answer == MessageBoxResult.Yes) OpenRuntimeLogsButton_Click(this, new RoutedEventArgs());
                 }
