@@ -97,11 +97,13 @@ jobs:
           $artifactRoot = Join-Path $PWD "lunaria-source-artifact"
           gh run download $sourceRun.databaseId --repo $env:GITHUB_REPOSITORY --name $artifactName --dir $artifactRoot
           if ($LASTEXITCODE -ne 0) { throw "Could not download the successful source-build artifact." }
-          $builtZip = Join-Path $artifactRoot "artifacts/lunaria-windows/lunaria-2026-11-28-windows-x86_64.zip"
-          $sumsFile = Join-Path $artifactRoot "artifacts/lunaria-windows/SHA256SUMS.txt"
-          if (-not (Test-Path $builtZip) -or -not (Test-Path $sumsFile)) {
+          $runtimeArtifactDir = Join-Path $artifactRoot "artifacts/lunaria-windows"
+          $builtArchive = Get-ChildItem $runtimeArtifactDir -Filter "lunaria-*-windows-x86_64.zip" | Select-Object -First 1
+          $sumsFile = Join-Path $runtimeArtifactDir "SHA256SUMS.txt"
+          if (-not $builtArchive -or -not (Test-Path $sumsFile)) {
             throw "Source-build artifact is missing the runtime ZIP or its checksum file."
           }
+          $builtZip = $builtArchive.FullName
           $expectedSha256 = ((Get-Content $sumsFile -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
           $actualSha256 = (Get-FileHash $builtZip -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actualSha256 -ne $expectedSha256) { throw "Source-built Lunaria SHA-256 mismatch: $actualSha256" }
