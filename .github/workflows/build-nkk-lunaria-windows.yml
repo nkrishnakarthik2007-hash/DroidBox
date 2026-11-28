@@ -104,7 +104,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: NKK-Lunaria-Windows-x64-${{ github.sha }}
+          name: NKK-Lunaria-Windows-x64-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             artifacts/lunaria-windows/**
             lunaria-windows-build.log
