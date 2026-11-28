@@ -72,8 +72,8 @@ jobs:
         working-directory: runtime/lunaria
         env:
           DYNARMIC_JOBS: "2"
-          DIST_OPTFLAGS: "-g -O1 -fno-omit-frame-pointer"
-          DIST_LDFLAGS: "-g"
+          OPTFLAGS: "-g -O1 -fno-omit-frame-pointer"
+          OPT_LDFLAGS: "-g"
         run: |
           set -o pipefail
           make -j2 dist-cross-win 2>&1 | tee ../../lunaria-windows-build.log
