@@ -144,12 +144,38 @@ jobs:
         timeout-minutes: 2
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           $runtime = Get-ChildItem "artifacts/DroidBox-win-x64/runtime/Lunaria" -Recurse -Filter lunaria.exe | Select-Object -First 1
           if (-not $runtime) { throw "Lunaria executable missing before smoke test." }
-          gh run download 45319538426 --repo $env:GITHUB_REPOSITORY --name droidbox-smoke-test-apk --dir smoke-test
+
+          $smokeRun = $null
+          $smokeDeadline = (Get-Date).AddMinutes(30)
+          while (-not $smokeRun -and (Get-Date) -lt $smokeDeadline) {
+            $runsJson = gh run list --workflow build-smoke-test-apk.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            if ($LASTEXITCODE -ne 0) { throw "Could not query the smoke APK build workflow." }
+            $runs = $runsJson | ConvertFrom-Json
+            $smokeRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
+            if (-not $smokeRun) { Start-Sleep -Seconds 10 }
+          }
+          if (-not $smokeRun) { throw "Timed out waiting for the smoke APK build." }
+
+          while ($smokeRun.status -ne "completed" -and (Get-Date) -lt $smokeDeadline) {
+            Start-Sleep -Seconds 10
+            $runsJson = gh run list --workflow build-smoke-test-apk.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            if ($LASTEXITCODE -ne 0) { throw "Could not refresh the smoke APK build status." }
+            $runs = $runsJson | ConvertFrom-Json
+            $smokeRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
+          }
+          if ($smokeRun.status -ne "completed" -or $smokeRun.conclusion -ne "success") {
+            throw "Smoke APK build did not pass. Status=$($smokeRun.status); conclusion=$($smokeRun.conclusion)"
+          }
+
+          $smokeArtifactName = "droidbox-smoke-test-apk-$env:SOURCE_COMMIT_SHA"
+          gh run download $smokeRun.databaseId --repo $env:GITHUB_REPOSITORY --name $smokeArtifactName --dir smoke-test
+          if ($LASTEXITCODE -ne 0) { throw "Could not download the matching smoke-test APK." }
           $apk = Get-ChildItem smoke-test -Recurse -Filter *.apk | Select-Object -First 1
           if (-not $apk) { throw "Smoke-test APK artifact was not found." }
           $dataRoot = Join-Path $PWD "smoke-data"
@@ -187,7 +213,8 @@ jobs:
           $requiredSignals = @(
             "init_host_egl: EGL 1.5 ready",
             "MainActivity.onResume()V",
-            "[overlay] parsed guest document"
+            "[overlay] parsed guest document",
+            "[java D/DroidBoxSmokeTest] JNI varargs regression probe"
           )
           foreach ($signal in $requiredSignals) {
             if (-not $runtimeLog.Contains($signal)) { throw "Lunaria smoke test did not reach required startup stage: $signal" }
