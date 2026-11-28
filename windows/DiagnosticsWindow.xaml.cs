@@ -14,40 +14,50 @@ public partial class DiagnosticsWindow : Window
         RefreshLogs();
     }
     private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshLogs();
-    private async void SendReport_Click(object sender, RoutedEventArgs e)
-    {
-        var answer = MessageBox.Show(
-            "DroidBox will create a PUBLIC GitHub issue in the NKK DroidBox repository. It includes recent runtime log text and basic Windows/.NET details. APK files are never uploaded; local user-profile paths and common token/password patterns are removed. Review the report on GitHub after it is created.\n\nSend this diagnostic report?",
-            "Share diagnostics with NKK", MessageBoxButton.YesNo, MessageBoxImage.Information);
-        if (answer != MessageBoxResult.Yes) return;
+    private const string PowerShellBundleCommand = """
+$ErrorActionPreference = 'Stop'
+$logDir = Join-Path $env:LOCALAPPDATA 'DroidBox\Logs'
+if (-not (Test-Path -LiteralPath $logDir)) { throw "DroidBox log folder not found: $logDir" }
+$files = Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 5
+if (-not $files) { throw 'No DroidBox log files found. Launch the APK once, then run this command again.' }
+$desktop = [Environment]::GetFolderPath('Desktop')
+$zipPath = Join-Path $desktop ("DroidBox-Logs-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.zip')
+$tempDir = Join-Path $env:TEMP ('DroidBox-Logs-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+try {
+  foreach ($file in $files) {
+    $content = Get-Content -LiteralPath $file.FullName -Raw
+    if ($env:USERPROFILE) { $content = $content.Replace($env:USERPROFILE, '%USERPROFILE%') }
+    $content = [regex]::Replace($content, '(?i)Bearer\s+[A-Za-z0-9._~+/-]+=*', 'Bearer [REDACTED]')
+    $content = [regex]::Replace($content, '\bgh[pousr]_[A-Za-z0-9_]{20,}\b', '[GITHUB_TOKEN_REDACTED]')
+    $content = [regex]::Replace($content, '\bgithub_pat_[A-Za-z0-9_]{20,}\b', '[GITHUB_TOKEN_REDACTED]')
+    $content = [regex]::Replace($content, '(?i)(password|passwd|api[_-]?key|access[_-]?token|refresh[_-]?token)\s*[:=]\s*[^\s,;]+', '$1=[REDACTED]')
+    Set-Content -LiteralPath (Join-Path $tempDir $file.Name) -Value $content -Encoding UTF8
+  }
+  $system = @("Windows: $([Environment]::OSVersion.VersionString)", "Architecture: $env:PROCESSOR_ARCHITECTURE", "Log files included: $($files.Count)")
+  Set-Content -LiteralPath (Join-Path $tempDir 'environment.txt') -Value $system -Encoding UTF8
+  Compress-Archive -Path (Join-Path $tempDir '*') -DestinationPath $zipPath -Force
+  Write-Host "Created diagnostic bundle: $zipPath" -ForegroundColor Green
+  Write-Host 'Attach this ZIP to your ChatGPT conversation. APK files are not included.'
+}
+finally {
+  Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+""";
 
-        SendReportButton.IsEnabled = false;
-        StatusText.Text = "Preparing a sanitized report and connecting to GitHub…";
+    private void CopyPowerShellCommand_Click(object sender, RoutedEventArgs e)
+    {
         try
         {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
-            var url = await GitHubDiagnosticsUploader.SendLatestAsync(_directory, timeout.Token);
-            StatusText.Text = "Report sent successfully · " + url;
-            var open = MessageBox.Show(
-                "Your diagnostic report was created. You do not need to download or copy any logs.\n\nOpen the GitHub report now?",
-                "Diagnostics sent", MessageBoxButton.YesNo, MessageBoxImage.Information);
-            if (open == MessageBoxResult.Yes)
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            Clipboard.SetText(PowerShellBundleCommand);
+            StatusText.Text = "PowerShell command copied · paste it into PowerShell and upload the ZIP it creates on your Desktop.";
+            MessageBox.Show(
+                "PowerShell command copied.\\n\\nOpen Windows PowerShell, paste the command and press Enter. It creates a sanitized DroidBox-Logs ZIP on your Desktop. Attach that ZIP here in ChatGPT. No GitHub sign-in is needed.",
+                "DroidBox diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Could not send report · " + ex.Message;
-            if (MessageBox.Show(
-                ex.Message + "\n\nWould you like DroidBox to open GitHub setup/sign-in now?",
-                "GitHub connection needed", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-            {
-                try { GitHubDiagnosticsUploader.StartGitHubConnection(); }
-                catch (Exception launchError) { StatusText.Text = "Could not open GitHub setup · " + launchError.Message; }
-            }
-        }
-        finally
-        {
-            SendReportButton.IsEnabled = true;
+            StatusText.Text = "Could not copy the PowerShell command: " + ex.Message;
         }
     }
 
