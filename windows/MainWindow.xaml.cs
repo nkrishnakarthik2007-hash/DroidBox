@@ -141,14 +141,19 @@ public partial class MainWindow : Window
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DroidBox", "settings.json");
     public MainWindow()
     {
+        AppLog.Info("MainWindow constructor started.");
         InitializeComponent();
+        AppLog.Info("MainWindow XAML initialized.");
         Icon = CreateAppIcon();
         Loaded += (_, _) => BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)));
         _appView = CollectionViewSource.GetDefaultView(_apps);
         _appView.SortDescriptions.Add(new SortDescription(nameof(ApkLibraryEntry.DisplayName), ListSortDirection.Ascending));
         AppLibraryList.ItemsSource = _appView;
+        AppLog.Info("Loading saved APK library.");
         LoadAppLibrary();
+        AppLog.Info("Loading runtime settings.");
         LoadRuntimeSettings();
+        AppLog.Info("Launcher constructor completed.");
         Loaded += async (_, _) => await CheckForUpdatesAsync(showNoUpdates: false);
     }
 
@@ -539,7 +544,7 @@ public partial class MainWindow : Window
     }
     private void SelectRuntimeButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "Select Stubuika or Lunaria runtime", Filter = "Runtime executable (*.exe)|*.exe", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = "Select Android runtime component", Filter = "Runtime executable (*.exe)|*.exe", CheckFileExists = true };
         if (dialog.ShowDialog() != true) return;
         _runtimePath = dialog.FileName;
         var version = FileVersionInfo.GetVersionInfo(_runtimePath).FileVersion;
@@ -603,6 +608,7 @@ public partial class MainWindow : Window
         if (MessageBox.Show(warning, "Security warning", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try
         {
+            AppLog.Info($"Starting Android runtime for selected package. File exists={File.Exists(_selectedApkPath)}.");
             var psi = new ProcessStartInfo(_runtimePath)
             {
                 WorkingDirectory = Path.GetDirectoryName(_runtimePath) ?? AppContext.BaseDirectory,
@@ -677,7 +683,8 @@ public partial class MainWindow : Window
             if (!process.Start())
             {
                 process.Dispose();
-                InspectStatus.Text = "Windows could not start the runtime process.";
+                AppLog.Error("Windows Process.Start returned false for the Android runtime.");
+                InspectStatus.Text = "Windows could not start the Android runtime.";
                 return;
             }
             process.BeginOutputReadLine();
@@ -686,11 +693,13 @@ public partial class MainWindow : Window
             StopRuntimeButton.IsEnabled = true;
             RunAppButton.IsEnabled = false;
             WriteRuntimeLog("droidbox", $"Started PID {process.Id}; APK: {_selectedApkPath}");
+            AppLog.Info($"Android runtime process started. PID={process.Id}; log={logPath}");
             InspectStatus.Text = $"Runtime started (PID {process.Id}). Log: {logPath}. This does not confirm successful APK rendering.";
         }
         catch (Exception ex)
         {
-            InspectStatus.Text = "Runtime launch failed.";
+            AppLog.Error("Android runtime launch failed before the process was fully started.", ex);
+            InspectStatus.Text = "Android runtime launch failed.";
             MessageBox.Show(ex.Message, "DroidBox", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
