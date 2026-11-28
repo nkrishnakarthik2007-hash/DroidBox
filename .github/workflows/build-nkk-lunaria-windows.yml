@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           test -f runtime/lunaria/Makefile
           test -f runtime/lunaria/LICENSE
-          test -f runtime/lunaria/src/luna-ui/CMakeLists.txt
+          test -f runtime/lunaria/src/luna-ui/luna-ui.h
           echo "Lunaria commit: $(git -C runtime/lunaria rev-parse HEAD)"
           echo "Luna UI commit: $(git -C runtime/lunaria/src/luna-ui rev-parse HEAD)"
           git -C runtime/lunaria status --short
