@@ -52,7 +52,7 @@ finally {
             Clipboard.SetText(PowerShellBundleCommand);
             StatusText.Text = "PowerShell command copied · paste it into PowerShell and upload the ZIP it creates on your Desktop.";
             MessageBox.Show(
-                "PowerShell command copied.\\n\\nOpen Windows PowerShell, paste the command and press Enter. It creates a sanitized DroidBox-Logs ZIP on your Desktop. Attach that ZIP here in ChatGPT. No GitHub sign-in is needed.",
+                "PowerShell command copied.\n\nOpen Windows PowerShell, paste the command and press Enter. It creates a sanitized DroidBox-Logs ZIP on your Desktop. Attach that ZIP here in ChatGPT. No GitHub sign-in is needed.",
                 "DroidBox diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
