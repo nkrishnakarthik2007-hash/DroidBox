@@ -25,15 +25,15 @@ Settings, diagnostic logs, the APK library index and imported APK copies are sto
 - Modern glass-style Windows 11 interface with NKK branding and a short animated startup splash.
 - Select or drag an APK into DroidBox.
 - Inspect APK metadata without executing APK code.
-- Select a Stubuika or Lunaria Windows executable; the path is saved in local settings.
+- DroidBox discovers the bundled Android runtime automatically; ordinary users do not need to select a runtime executable.
 - Run runtime diagnostics.
 - Launch a selected APK after a security warning.
 - Stop the launched runtime process tree.
-- Capture runtime stdout/stderr in a bounded diagnostic log.
+- Capture application startup/errors and runtime stdout/stderr in bounded diagnostic logs. The Diagnostics window copies a PowerShell command that creates a local ZIP for sharing; no GitHub CLI sign-in is required.
 
 ## Experimental runtime setup
 
-The current preview still requires a separate runtime executable to be selected manually. Runtime auto-download and silent setup will be added only after the selected engine passes graphics, fonts, and real APK rendering tests. The current Stubuika test log showed that its guest window was created, but native EGL display initialization and text shaping failed, so it is not yet ready to be bundled as the default engine.
+The release workflow bundles the pinned Project Lunaria Windows x64 runtime with its required Android framework resources and third-party notices. The runtime remains experimental: automated smoke testing covers one small test APK and does not establish compatibility for arbitrary APKs. Preserve upstream Project Lunaria attribution and MPL-2.0 notices. Do not patch or redistribute upstream runtime assets without retaining their licence obligations.
 
 The [DroidBox smoke-test APK workflow](https://github.com/nkrishnakarthik2007-hash/DroidBox/actions/workflows/build-smoke-test-apk.yml) builds our small test application.
 
