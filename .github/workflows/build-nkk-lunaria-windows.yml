@@ -5,17 +5,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "runtime/lunaria"
-      - ".github/workflows/build-nkk-lunaria-windows.yml"
-      - ".github/workflows/publish-release.yml"
-      - "docs/NKK_NATIVE_RUNTIME_FORK.md"
   pull_request:
-    paths:
-      - "runtime/lunaria"
-      - ".github/workflows/build-nkk-lunaria-windows.yml"
-      - ".github/workflows/publish-release.yml"
-      - "docs/NKK_NATIVE_RUNTIME_FORK.md"
+    branches:
+      - main
 
 permissions:
   contents: read
