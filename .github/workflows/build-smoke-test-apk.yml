@@ -2,9 +2,11 @@ name: Build DroidBox smoke-test APK
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'runtime-test-app/**'
-      - '.github/workflows/build-smoke-test-apk.yml'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,7 +29,7 @@ jobs:
         working-directory: runtime-test-app
       - uses: actions/upload-artifact@v4
         with:
-          name: droidbox-smoke-test-apk
+          name: droidbox-smoke-test-apk-${{ github.event.pull_request.head.sha || github.sha }}
           path: runtime-test-app/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30

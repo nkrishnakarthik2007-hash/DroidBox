@@ -65,22 +65,58 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Bundled APK inspector failed its startup check." }
 
 
-      - name: Bundle the Lunaria Windows x64 runtime
+      - name: Bundle the source-built Lunaria Windows x64 runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $uri = "https://github.com/yui0/lunaria/releases/download/2026.11.24/lunaria-2026-11-24-windows-x86_64.zip"
-          Invoke-WebRequest -Uri $uri -OutFile lunaria.zip
-          $expectedSha256 = "E505703FA8756AEC7B362CFB69B355FB49B79C31346B9D311BBD30917A8BEDCA"
-          $actualSha256 = (Get-FileHash lunaria.zip -Algorithm SHA256).Hash
-          if ($actualSha256 -ne $expectedSha256) { throw "Lunaria archive SHA-256 mismatch: $actualSha256" }
-          if ((Get-Item lunaria.zip).Length -lt 10000000) { throw "Lunaria archive is unexpectedly small." }
-          Expand-Archive lunaria.zip -DestinationPath runtime-source -Force
+          $sourceRun = $null
+          $deadline = (Get-Date).AddMinutes(100)
+          while (-not $sourceRun -and (Get-Date) -lt $deadline) {
+            $runsJson = gh run list --workflow build-nkk-lunaria-windows.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            if ($LASTEXITCODE -ne 0) { throw "Could not query the source-build workflow." }
+            $runs = $runsJson | ConvertFrom-Json
+            $sourceRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
+            if (-not $sourceRun) { Start-Sleep -Seconds 15 }
+          }
+          if (-not $sourceRun) { throw "Timed out waiting for the source-built Lunaria workflow." }
+
+          while ($sourceRun.status -ne "completed" -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 15
+            $runsJson = gh run list --workflow build-nkk-lunaria-windows.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            if ($LASTEXITCODE -ne 0) { throw "Could not refresh the source-build workflow status." }
+            $runs = $runsJson | ConvertFrom-Json
+            $sourceRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
+          }
+          if ($sourceRun.status -ne "completed" -or $sourceRun.conclusion -ne "success") {
+            throw "Source-built Lunaria did not pass. Status=$($sourceRun.status); conclusion=$($sourceRun.conclusion)"
+          }
+
+          $artifactName = "NKK-Lunaria-Windows-x64-$env:SOURCE_COMMIT_SHA"
+          $artifactRoot = Join-Path $PWD "lunaria-source-artifact"
+          gh run download $sourceRun.databaseId --repo $env:GITHUB_REPOSITORY --name $artifactName --dir $artifactRoot
+          if ($LASTEXITCODE -ne 0) { throw "Could not download the successful source-build artifact." }
+          $runtimeArtifactDir = Join-Path $artifactRoot "artifacts/lunaria-windows"
+          $builtArchive = Get-ChildItem $runtimeArtifactDir -Filter "lunaria-*-windows-x86_64.zip" | Select-Object -First 1
+          $sumsFile = Join-Path $runtimeArtifactDir "SHA256SUMS.txt"
+          if (-not $builtArchive -or -not (Test-Path $sumsFile)) {
+            throw "Source-build artifact is missing the runtime ZIP or its checksum file."
+          }
+          $builtZip = $builtArchive.FullName
+          $expectedSha256 = ((Get-Content $sumsFile -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+          $actualSha256 = (Get-FileHash $builtZip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualSha256 -ne $expectedSha256) { throw "Source-built Lunaria SHA-256 mismatch: $actualSha256" }
+          if ((Get-Item $builtZip).Length -lt 10000000) { throw "Source-built Lunaria archive is unexpectedly small." }
+
+          Expand-Archive $builtZip -DestinationPath runtime-source -Force
           $exe = Get-ChildItem runtime-source -Recurse -Filter lunaria.exe | Select-Object -First 1
-          if (-not $exe) { throw "lunaria.exe missing from upstream archive." }
+          if (-not $exe) { throw "lunaria.exe missing from the source-built artifact." }
           $runtimeRoot = Join-Path (Resolve-Path "artifacts/DroidBox-win-x64").Path "runtime/Lunaria"
           New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
           Copy-Item (Join-Path $exe.Directory.FullName "*") $runtimeRoot -Recurse -Force
+
           $frameworkZip = "platform-31_r01.zip"
           Invoke-WebRequest -Uri "https://dl.google.com/android/repository/$frameworkZip" -OutFile $frameworkZip
           $frameworkSha1 = (Get-FileHash $frameworkZip -Algorithm SHA1).Hash.ToLowerInvariant()
@@ -88,29 +124,58 @@ jobs:
           $frameworkRoot = Join-Path $runtimeRoot "runtime/framework-res"
           python scripts/install_framework_resources.py $frameworkZip $frameworkRoot
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $frameworkRoot "resources.arsc"))) { throw "Android framework resources were not installed." }
+
           $licenses = Join-Path $runtimeRoot "licenses"
           New-Item -ItemType Directory -Force -Path $licenses | Out-Null
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yui0/lunaria/2026.11.24/LICENSE" -OutFile (Join-Path $licenses "Lunaria-MPL-2.0.txt")
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yui0/lunaria/1d538e7e0ddab3074131cfbce6f9d0825764316e/LICENSE" -OutFile (Join-Path $licenses "Lunaria-MPL-2.0.txt")
           @(
-            "Bundled runtime: Project Lunaria 2026.11.24 Windows x86_64 release.",
+            "Bundled runtime: NKK source-built Project Lunaria Windows x86_64 runtime.",
+            "Lunaria source commit: 1d538e7e0ddab3074131cfbce6f9d0825764316e.",
+            "Source build includes Windows-specific JNI varargs handling and debug information.",
             "Lunaria is licensed under Mozilla Public License 2.0. Source: https://github.com/yui0/lunaria",
             "Android SDK Platform 31 framework resources are copied unmodified from Google's android-12/android.jar after SHA-1 verification; see runtime/framework-res/SOURCE.txt and NOTICES/.",
-            "Lunaria is an experimental Android compatibility runtime; native Windows display and audio remain unverified upstream.",
             "APK execution is not sandboxed. Only run trusted Android packages."
           ) | Set-Content (Join-Path $runtimeRoot "THIRD-PARTY-NOTICES.txt")
-          if (-not (Test-Path (Join-Path $runtimeRoot "lunaria.exe"))) { throw "Bundled Lunaria executable missing." }
-          "Bundled Lunaria runtime and licence notices."
+          if (-not (Test-Path (Join-Path $runtimeRoot "lunaria.exe"))) { throw "Bundled source-built Lunaria executable missing." }
+          "Bundled verified NKK source-built Lunaria runtime from workflow run $($sourceRun.databaseId)."
+          "Source runtime SHA-256: $actualSha256"
 
       - name: Run native Windows Lunaria smoke test
         timeout-minutes: 2
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           $runtime = Get-ChildItem "artifacts/DroidBox-win-x64/runtime/Lunaria" -Recurse -Filter lunaria.exe | Select-Object -First 1
           if (-not $runtime) { throw "Lunaria executable missing before smoke test." }
-          gh run download 45319538426 --repo $env:GITHUB_REPOSITORY --name droidbox-smoke-test-apk --dir smoke-test
+
+          $smokeRun = $null
+          $smokeDeadline = (Get-Date).AddMinutes(30)
+          while (-not $smokeRun -and (Get-Date) -lt $smokeDeadline) {
+            $runsJson = gh run list --workflow build-smoke-test-apk.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            if ($LASTEXITCODE -ne 0) { throw "Could not query the smoke APK build workflow." }
+            $runs = $runsJson | ConvertFrom-Json
+            $smokeRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
+            if (-not $smokeRun) { Start-Sleep -Seconds 10 }
+          }
+          if (-not $smokeRun) { throw "Timed out waiting for the smoke APK build." }
+
+          while ($smokeRun.status -ne "completed" -and (Get-Date) -lt $smokeDeadline) {
+            Start-Sleep -Seconds 10
+            $runsJson = gh run list --workflow build-smoke-test-apk.yml --commit $env:SOURCE_COMMIT_SHA --repo $env:GITHUB_REPOSITORY --json databaseId,status,conclusion,headSha --limit 10
+            if ($LASTEXITCODE -ne 0) { throw "Could not refresh the smoke APK build status." }
+            $runs = $runsJson | ConvertFrom-Json
+            $smokeRun = $runs | Where-Object { $_.headSha -eq $env:SOURCE_COMMIT_SHA } | Select-Object -First 1
+          }
+          if ($smokeRun.status -ne "completed" -or $smokeRun.conclusion -ne "success") {
+            throw "Smoke APK build did not pass. Status=$($smokeRun.status); conclusion=$($smokeRun.conclusion)"
+          }
+
+          $smokeArtifactName = "droidbox-smoke-test-apk-$env:SOURCE_COMMIT_SHA"
+          gh run download $smokeRun.databaseId --repo $env:GITHUB_REPOSITORY --name $smokeArtifactName --dir smoke-test
+          if ($LASTEXITCODE -ne 0) { throw "Could not download the matching smoke-test APK." }
           $apk = Get-ChildItem smoke-test -Recurse -Filter *.apk | Select-Object -First 1
           if (-not $apk) { throw "Smoke-test APK artifact was not found." }
           $dataRoot = Join-Path $PWD "smoke-data"
@@ -148,7 +213,8 @@ jobs:
           $requiredSignals = @(
             "init_host_egl: EGL 1.5 ready",
             "MainActivity.onResume()V",
-            "[overlay] parsed guest document"
+            "[overlay] parsed guest document",
+            "[java D/DroidBoxSmokeTest] JNI varargs regression probe"
           )
           foreach ($signal in $requiredSignals) {
             if (-not $runtimeLog.Contains($signal)) { throw "Lunaria smoke test did not reach required startup stage: $signal" }

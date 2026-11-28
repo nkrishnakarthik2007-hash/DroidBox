@@ -1,0 +1,104 @@
+name: Build NKK Lunaria Windows runtime
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nkk-lunaria-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows-x64:
+    name: Source-build Windows x64 runtime (UCRT)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout DroidBox and pinned runtime source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify pinned source and nested UI dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f runtime/lunaria/Makefile
+          test -f runtime/lunaria/LICENSE
+          test -f runtime/lunaria/src/luna-ui/luna-ui.h
+          echo "Lunaria commit: $(git -C runtime/lunaria rev-parse HEAD)"
+          echo "Luna UI commit: $(git -C runtime/lunaria/src/luna-ui rev-parse HEAD)"
+          git -C runtime/lunaria status --short
+
+      - name: Set up Python 3.11 for upstream build scripts
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux cross-build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential nasm cmake ninja-build clang lld libclang-dev \
+            pkg-config libboost-dev libssl-dev libglfw3-dev libgles2-mesa-dev \
+            libegl1-mesa-dev libasound2-dev libbsd-dev libunwind-dev zlib1g-dev \
+            libvulkan-dev libxcb1-dev libxcb-shm0-dev libxcb-randr0-dev \
+            curl jq zip unzip bzip2 xz-utils zstd git
+          python --version
+          python -c "import hashlib; assert hasattr(hashlib, 'file_digest')"
+
+      - name: Install pinned UCRT cross compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=20261006
+          archive="llvm-mingw-${version}-ucrt-ubuntu-22.04-x86_64.tar.xz"
+          url="https://github.com/mstorsjo/llvm-mingw/releases/download/${version}/${archive}"
+          curl -fL --retry 3 "$url" -o "/tmp/$archive"
+          sudo tar -xJf "/tmp/$archive" -C /opt
+          prefix="/opt/llvm-mingw-${version}-ucrt-ubuntu-22.04-x86_64"
+          "$prefix/bin/x86_64-w64-mingw32-gcc" --version
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+
+      - name: Build source runtime with native debug information
+        working-directory: runtime/lunaria
+        env:
+          DYNARMIC_JOBS: "2"
+          OPTFLAGS: "-g -O1 -fno-omit-frame-pointer"
+          OPT_LDFLAGS: "-g"
+        run: |
+          set -o pipefail
+          make -j2 dist-cross-win 2>&1 | tee ../../lunaria-windows-build.log
+
+      - name: Verify Windows package
+        working-directory: runtime/lunaria
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$(find . -maxdepth 1 -name 'lunaria-*-windows-x86_64.zip' -print -quit)"
+          test -n "$archive"
+          unzip -t "$archive"
+          mkdir -p ../../artifacts/lunaria-windows
+          cp "$archive" ../../artifacts/lunaria-windows/
+          sha256sum "$archive" > ../../artifacts/lunaria-windows/SHA256SUMS.txt
+          cp ../../lunaria-windows-build.log ../../artifacts/lunaria-windows/
+
+      - name: Upload source-built runtime and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NKK-Lunaria-Windows-x64-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            artifacts/lunaria-windows/**
+            lunaria-windows-build.log
+          if-no-files-found: warn
+          retention-days: 14
